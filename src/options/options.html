@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>SNS Movie Patrol - 設定</title>
+  <link rel="stylesheet" href="../ui.css">
+</head>
+<body>
+  <header>
+    <h1>設定</h1>
+    <nav>
+      <span id="notice" class="muted"></span>
+      <button id="saveSettings" class="primary" title="保存してこのタブを閉じ、操作画面に戻ります">設定を保存</button>
+    </nav>
+  </header>
+
+  <section class="card pink">
+    <h2><span class="title">巡回先</span></h2>
+    <div class="tabbar">
+      <span id="groupTabs" class="tabs"></span>
+      <button type="button" id="addGroup" class="icon" title="グループを追加">＋</button>
+      <button type="button" id="renameGroup" class="icon" title="選択中のグループの名前を変える" hidden>✏️</button>
+      <button type="button" id="deleteGroup" class="icon" title="選択中のグループを削除(巡回先は未分類に移ります)" hidden>🗑️</button>
+    </div>
+    <p class="hint tabhint">行をクリックで選択(Ctrl・Shiftで複数)し、タブへドラッグするとそのグループにまとめて移せます。</p>
+    <div class="row filter">
+      <span id="siteFilter" class="chips"></span>
+      <input id="targetSearch" type="search" size="22" placeholder="アカウント名・タグで絞り込み">
+      <span id="filterCount" class="muted"></span>
+    </div>
+    <div id="targets"></div>
+    <form id="addForm" class="box">
+      <div class="box-title" id="formTitle">巡回先を追加</div>
+      <div class="field">
+        <label>サイト <select id="site"></select></label>
+        <label id="accountField">アカウント <input id="account" type="text" size="20"></label>
+      </div>
+      <div class="field">
+        <label id="hashtagsField">ハッシュタグ <input id="hashtags" type="text" size="24"></label>
+        <label id="keywordField">検索ワード <input id="keyword" type="text" size="16"></label>
+      </div>
+      <div class="field">
+        <label>グループ <select id="group"></select></label>
+        <button type="submit" id="submitTarget" class="primary">追加</button>
+        <button type="button" id="cancelEdit" hidden>キャンセル</button>
+      </div>
+      <p class="hint">
+        入力した項目すべてに当てはまる投稿が対象です(例: アカウント+ハッシュタグ = そのアカウントの投稿のうち、そのハッシュタグ付きのもの)。
+        ハッシュタグは空白区切りで複数書け、どれか1つを含めば対象になります。
+      </p>
+    </form>
+  </section>
+
+  <section class="card orange">
+    <h2><span class="title">巡回方法</span></h2>
+    <div class="field">
+      アクセス間隔
+      <input id="waitMinSec" type="number" min="0" step="1"> 〜
+      <input id="waitMaxSec" type="number" min="0" step="1"> 秒(この範囲でランダム)
+    </div>
+    <div class="field">
+      初回の遡り <input id="firstRunHours" type="number" min="1" step="1"> 時間
+    </div>
+    <div class="field">
+      スクロール上限 <input id="maxScrolls" type="number" min="10" step="10"> 回 / 巡回先
+      <span class="muted">(Instagramは1回で12投稿)</span>
+    </div>
+  </section>
+
+  <section class="card blue">
+    <h2><span class="title">ウィンドウ</span></h2>
+    <div class="field">
+      位置 左 <input id="winLeft" type="number" step="1"> 上 <input id="winTop" type="number" step="1">
+      <span class="muted">(空欄ならブラウザ任せ)</span>
+    </div>
+    <div class="field">
+      サイズ 幅 <input id="winWidth" type="number" min="400" step="1"> 高さ <input id="winHeight" type="number" min="400" step="1">
+    </div>
+    <p class="hint">操作画面の「この位置とサイズを記憶」でも設定できます。次にウィンドウを開いたときから反映されます。</p>
+  </section>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

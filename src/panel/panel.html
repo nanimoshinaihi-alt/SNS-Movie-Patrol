@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>SNS Movie Patrol</title>
+  <link rel="stylesheet" href="../ui.css">
+</head>
+<body>
+  <header>
+    <h1>SNS Movie Patrol</h1>
+    <nav>
+      <button id="saveBounds" title="次回からこのウィンドウの位置とサイズで開きます">この位置とサイズを記憶</button>
+      <a id="openOptions" href="../options/options.html">設定</a>
+    </nav>
+  </header>
+
+  <section class="card">
+    <h2><span class="title">実行モード</span></h2>
+    <div class="row">
+      <label><input type="radio" name="mode" value="since" checked> 前回完了以降</label>
+      <label><input type="radio" name="mode" value="range"> 日時範囲指定</label>
+    </div>
+    <p class="hint" id="modeHint"></p>
+    <div id="rangeBox" hidden>
+      <div class="field">
+        <input id="rangeSince" type="datetime-local"> 〜
+        <input id="rangeUntil" type="datetime-local">
+        <span class="muted">日本時間</span>
+      </div>
+      <div class="field">
+        <label><input id="rangeDedupe" type="checkbox" checked> 取得済み履歴にあるURLを除外する</label>
+      </div>
+      <div class="field">
+        <label><input id="rangeUpdate" type="checkbox"> 成功したら前回成功時刻を終了日時に更新する</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="card orange slim">
+    <div class="actions">
+      <button id="start" class="primary">巡回開始</button>
+      <button id="stop" disabled>停止</button>
+    </div>
+    <span id="progress" class="muted"></span>
+    <p class="hint">巡回中はこのウィンドウを最小化したり、他のウィンドウで完全に隠したりしないでください。</p>
+  </section>
+
+  <section class="card pink">
+    <h2>
+      <span class="title">巡回先</span>
+      <label class="all"><input id="checkAll" type="checkbox"> ALL</label>
+      <span id="targetsSummary" class="muted"></span>
+      <button id="toggleTargets" class="icon push-right" title="一覧を折りたたむ / 開く">▼</button>
+    </h2>
+    <div id="groupTabs" class="tabs" hidden></div>
+    <div id="targets"></div>
+  </section>
+
+  <section class="card blue">
+    <h2><span class="title">巡回状況</span> <span id="runSummary" class="muted"></span></h2>
+    <div id="results"></div>
+    <div class="row">
+      <button id="openResults">URL一覧を開く</button>
+      <span id="notice" class="muted"></span>
+    </div>
+  </section>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

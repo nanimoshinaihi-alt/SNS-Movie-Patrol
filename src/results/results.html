@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>SNS Movie Patrol - 結果</title>
+  <link rel="stylesheet" href="../ui.css">
+</head>
+<body>
+  <header>
+    <h1>動画URL一覧</h1>
+    <span id="summary" class="muted"></span>
+  </header>
+
+  <section class="card">
+    <h2><span class="title">すべて</span> <span id="count" class="muted"></span></h2>
+    <div class="row">
+      <button id="copy" class="primary">すべてコピー</button>
+      <button id="save">txt保存</button>
+      <span id="notice" class="muted"></span>
+    </div>
+    <textarea id="output" rows="8" readonly></textarea>
+  </section>
+
+  <section class="card blue">
+    <h2><span class="title">巡回先ごと</span></h2>
+    <div id="results"></div>
+  </section>
+
+  <script type="module" src="results.js"></script>
+</body>
+</html>

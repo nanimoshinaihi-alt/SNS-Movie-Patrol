@@ -1,0 +1,582 @@
+/* 操作画面・設定・結果の3ページ共通のスタイル */
+:root {
+  color-scheme: light dark;
+
+  --purple: #8b3fd9;
+  --pink: #f0569b;
+  --orange: #f08a24;
+  --blue: #2f8fe0;
+  --green: #1f9d6b;
+
+  --page-bg: linear-gradient(140deg, #fff3d4 0%, #ffe9dc 45%, #fff8e4 100%);
+  --card-bg: #ffffff;
+  --inset-bg: #f7f3fc;
+  --text: #2b2140;
+  --muted: #7a7090;
+  --border: #e3d9f2;
+  --shadow: 0 2px 10px rgba(110, 60, 170, 0.14);
+  --button-bg: #efe6fb;
+  --button-hover: #e2d3f7;
+
+  --ok: #1a8f4a;
+  --warn: #b97700;
+  --fail: #d03a3a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: linear-gradient(140deg, #24173a 0%, #331a33 45%, #15263a 100%);
+    --card-bg: #2a2238;
+    --inset-bg: #342a45;
+    --text: #efe9fa;
+    --muted: #a99fc0;
+    --border: #46395c;
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    --button-bg: #43365a;
+    --button-hover: #54446f;
+
+    --ok: #4fd08a;
+    --warn: #f0b84a;
+    --fail: #ff7b7b;
+  }
+}
+
+html {
+  min-height: 100%;
+  background: var(--page-bg) fixed;
+}
+
+body {
+  margin: 0;
+  padding: 12px 12px 24px;
+  color: var(--text);
+  font: 13px/1.5 "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
+}
+
+/* ---- ページ上部のタイトル帯 ---- */
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: linear-gradient(100deg, var(--purple), var(--pink));
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+h1::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 12px;
+  vertical-align: 2px;
+}
+
+header .muted {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+header button,
+header a {
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+header button:hover,
+header a:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* タイトル帯の中の主要ボタン(設定を保存)は白地で目立たせる */
+header button.primary,
+header button.primary:hover:not(:disabled) {
+  padding: 4px 18px;
+  border-color: #fff;
+  background: #fff;
+  color: var(--purple);
+  font-size: 13px;
+  filter: none;
+}
+
+header button.primary:hover:not(:disabled) {
+  background: #f6ecff;
+}
+
+/* ---- エリア(カード) ---- */
+
+.card {
+  --accent: var(--purple);
+  margin: 0 0 12px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  border-top: 4px solid var(--accent);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.card.pink {
+  --accent: var(--pink);
+}
+
+.card.orange {
+  --accent: var(--orange);
+}
+
+.card.blue {
+  --accent: var(--blue);
+}
+
+.card.green {
+  --accent: var(--green);
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 見出しはエリアの色のラベルにする */
+h2 > .title {
+  padding: 1px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  letter-spacing: 0.05em;
+}
+
+h2 .push-right {
+  margin-left: auto;
+}
+
+/* 折りたたんだ巡回先の一覧は5件ほど見せ、続きがあるときは下へ向かって薄くする */
+.card.collapsed #targets {
+  max-height: 165px;
+  overflow: hidden;
+}
+
+.card.collapsed #targets.faded {
+  -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+}
+
+h2 .muted,
+h2 .all {
+  font-weight: normal;
+}
+
+/* ---- 入力部品 ---- */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--button-bg);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--button-hover);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.primary {
+  background: linear-gradient(100deg, var(--purple), var(--pink));
+  color: #fff;
+  font-weight: 700;
+}
+
+button.primary:hover:not(:disabled) {
+  background: linear-gradient(100deg, var(--purple), var(--pink));
+  filter: brightness(1.1);
+}
+
+button.icon {
+  padding: 2px 6px;
+  min-width: 28px;
+  line-height: 1.2;
+  background: transparent;
+}
+
+/* display を指定した要素でも hidden 属性で確実に隠す */
+[hidden] {
+  display: none !important;
+}
+
+/* グループのタブ */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--tab-color, var(--accent, var(--purple)));
+}
+
+.tabbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tabbar .tabs {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* グループを追加する「＋」は、マウスを乗せなくても押せるボタンだと分かるようにしておく */
+#addGroup {
+  background: color-mix(in srgb, var(--accent, var(--purple)) 22%, var(--card-bg));
+  color: var(--accent, var(--purple));
+  font-weight: 700;
+}
+
+#addGroup:hover {
+  background: color-mix(in srgb, var(--accent, var(--purple)) 40%, var(--card-bg));
+}
+
+/* 未選択はグループの色で縁取り、選択中はその色で塗りつぶす */
+button.tab {
+  padding: 1px 12px;
+  border: 4px solid var(--tab-color);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--card-bg);
+}
+
+button.tab:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tab-color) 18%, var(--card-bg));
+}
+
+button.tab.active,
+button.tab.active:hover:not(:disabled) {
+  background: var(--tab-color);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 並べ替えのためにドラッグ中のタブ(設定画面) */
+button.tab[draggable="true"] {
+  cursor: grab;
+}
+
+button.tab.dragging {
+  opacity: 0.4;
+}
+
+/* 巡回先をドラッグしてきたときの、落とせるタブ */
+button.tab.drop {
+  outline: 2px dashed var(--tab-color);
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--tab-color) 30%, var(--card-bg));
+}
+
+/* グループの色の ◆ (巡回先の行) */
+.group-mark {
+  flex: none;
+  font-size: 11px;
+}
+
+.tabhint {
+  margin: 0 0 6px;
+}
+
+/* 選択中の巡回先(設定画面) */
+.target[draggable="true"] {
+  user-select: none;
+}
+
+.target.selected,
+.target.selected:nth-child(odd) {
+  background: color-mix(in srgb, var(--accent, var(--purple)) 22%, transparent);
+  outline: 1px solid var(--accent, var(--purple));
+}
+
+/* 絞り込みの行(設定画面の巡回先) */
+.filter {
+  margin-bottom: 6px;
+}
+
+.chips {
+  display: flex;
+  gap: 4px;
+}
+
+button.chip {
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+button.chip.active,
+button.chip.active:hover {
+  background: var(--accent, var(--purple));
+  color: #fff;
+  font-weight: 700;
+}
+
+input[type="search"],
+input[type="text"],
+input[type="number"],
+input[type="datetime-local"],
+select,
+textarea {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--accent, var(--purple));
+  outline-offset: -1px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent, var(--purple));
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  white-space: pre;
+  background: var(--inset-bg);
+}
+
+/* ---- 共通の並び ---- */
+
+.hint,
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hint {
+  margin: 4px 0 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.row + textarea,
+textarea + .row,
+#results + .row {
+  margin-top: 8px;
+}
+
+/* 巡回開始・停止: 大きめのボタンを中央に並べる */
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+}
+
+.actions button {
+  min-width: 150px;
+  padding: 6px 14px;
+  font-size: 14px;
+}
+
+.actions + #progress {
+  display: block;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* 進捗は出すものがないとき行ごと消して、エリアを詰める */
+.actions + #progress:empty {
+  display: none;
+}
+
+/* 実行エリアは余白と行間を詰めてスリムにする */
+.card.slim {
+  padding: 8px 12px;
+}
+
+.card.slim .hint {
+  margin: 4px 0 0;
+  line-height: 1.2;
+  text-align: center;
+  font-size: 11px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 6px 0;
+}
+
+.field input[type="number"] {
+  width: 80px;
+}
+
+/* ---- 巡回先・巡回状況の1行 ---- */
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.target:nth-child(odd) {
+  background: var(--inset-bg);
+}
+
+.target .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 並べ替え用のつまみ(設定画面) */
+.grip {
+  flex: none;
+  color: var(--muted);
+  cursor: grab;
+  user-select: none;
+}
+
+.target[draggable="true"] {
+  cursor: grab;
+}
+
+.target.dragging {
+  opacity: 0.4;
+  outline: 2px dashed var(--accent, var(--purple));
+}
+
+/* サイト名のバッジ */
+.site {
+  flex: none;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #555;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.site-x {
+  background: #1d1d1f;
+}
+
+.site-instagram {
+  background: linear-gradient(90deg, #f58529, #dd2a7b 55%, #8134af);
+}
+
+.site-tiktok {
+  background: linear-gradient(90deg, #12b5b0, #ee1d52);
+}
+
+.status-ok,
+.status-partial,
+.status-fail,
+.status-running {
+  font-weight: 700;
+}
+
+.status-ok {
+  color: var(--ok);
+}
+
+.status-partial {
+  color: var(--warn);
+}
+
+.status-fail {
+  color: var(--fail);
+}
+
+/* ---- カードの中の小さな枠(追加フォーム・巡回先ごとの結果) ---- */
+
+.box {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent, var(--purple));
+  border-radius: 8px;
+  background: var(--inset-bg);
+}
+
+.box-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.box textarea {
+  background: var(--card-bg);
+}
+
+.result-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.result-head .name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result textarea {
+  margin-top: 4px;
+}

@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "SNS Movie Patrol",
+  "version": "0.2.0",
+  "description": "SNSの巡回先から動画付き投稿のURL一覧を取得する",
+  "action": {
+    "default_title": "SNS Movie Patrol を開く"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*"],
+      "js": ["content/hook-common.js", "content/x-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content/hook-common.js", "content/instagram-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.tiktok.com/*"],
+      "js": ["content/hook-common.js", "content/tiktok-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "permissions": ["storage", "unlimitedStorage", "tabs", "scripting", "clipboardWrite"],
+  "host_permissions": ["https://x.com/*", "https://www.instagram.com/*", "https://www.tiktok.com/*"]
+}

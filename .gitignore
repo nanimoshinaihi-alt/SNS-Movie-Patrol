@@ -1,0 +1,2 @@
+# build.ps1 の出力(配布用 zip は GitHub の Releases に置く)
+dist/
