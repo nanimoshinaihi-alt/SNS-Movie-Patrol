@@ -12,11 +12,11 @@ async function extract(opts) {
   const TIMELINE_KEY = 'xdt_api__v1__feed__user_timeline_graphql_connection';
 
   if (location.pathname.startsWith('/accounts/login')) {
-    return { ok: false, items: [], error: 'Instagramにログインしていません' };
+    return { ok: false, fatal: true, items: [], error: 'Instagramにログインしていません' };
   }
   const store = window.__snsPatrolIg;
   if (!store) {
-    return { ok: false, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
+    return { ok: false, fatal: true, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
   }
 
   // 初回分が通信ではなくページ内に埋め込まれている場合に備えて、埋め込みデータからも探す

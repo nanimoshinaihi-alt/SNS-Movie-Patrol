@@ -4,12 +4,23 @@
 (() => {
   if (window.__snsPatrolTt) return;
 
-  // pages: 受け取った応答の数 / hasMore: まだ続きがあるか / items: 投稿(必要な項目だけ)
-  const store = (window.__snsPatrolTt = { pages: 0, hasMore: null, items: [] });
+  // pages: 読めた応答の数 / hasMore: まだ続きがあるか / items: 投稿(必要な項目だけ)
+  // responses: 届いた応答の数(読めなかったものも含む) / lastBad: 読めなかった応答の先頭(失敗時の診断用)
+  const store = (window.__snsPatrolTt = { pages: 0, hasMore: null, items: [], responses: 0, lastBad: null });
 
   window.__snsPatrolTap('/api/post/item_list', (text) => {
-    const json = JSON.parse(text);
-    if (!json || !Array.isArray(json.itemList)) return;
+    store.responses++;
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      store.lastBad = text.slice(0, 60) || '(空)';
+      return;
+    }
+    if (!json || !Array.isArray(json.itemList)) {
+      store.lastBad = text.slice(0, 60);
+      return;
+    }
     for (const item of json.itemList) {
       if (!item || !item.id) continue;
       store.items.push({

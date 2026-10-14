@@ -16,6 +16,8 @@
 //                              { ok, items: [{ key, url, timeMs, text?, tags? }], truncated?, error? } を返す。
 //                              text(本文)を付けた投稿は、拡張側(lib/match.js)がハッシュタグ・検索ワードで絞り込む。
 //                              サイト側の検索で絞り込み済みなら text を付けない。
+//                              失敗時、読み込み直しても直らないもの(未ログインなど)は fatal: true を付ける。
+//                              付けなければ、巡回側がページを一度読み込み直してやり直す。
 //                              ページ側で単体実行されるので、関数の外の変数や import は使えない。
 //   world                    : (任意) 'MAIN' にすると extract をページ自身のJS環境で実行する
 import x from './x.js';

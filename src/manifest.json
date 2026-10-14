@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SNS Movie Patrol",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "SNSの巡回先から動画付き投稿のURL一覧を取得する",
   "action": {
     "default_title": "SNS Movie Patrol を開く"

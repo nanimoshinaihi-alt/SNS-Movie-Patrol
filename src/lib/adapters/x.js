@@ -28,7 +28,7 @@ async function extract(opts) {
   const filterLocally = !!target.account && (target.hashtags.length > 0 || !!target.keyword);
   const store = window.__snsPatrolX;
   if (filterLocally && !store) {
-    return { ok: false, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
+    return { ok: false, fatal: true, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const TWITTER_EPOCH = 1288834974657n;
@@ -74,7 +74,7 @@ async function extract(opts) {
   const deadline = Date.now() + 30000;
   let ready = false;
   while (Date.now() < deadline) {
-    if (isLoginPage()) return { ok: false, items: [], error: 'Xにログインしていません' };
+    if (isLoginPage()) return { ok: false, fatal: true, items: [], error: 'Xにログインしていません' };
     if (document.querySelector(TWEET)) {
       ready = true;
       break;

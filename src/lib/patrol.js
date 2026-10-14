@@ -47,7 +47,33 @@ function waitForTabComplete(tabId, timeoutMs) {
   });
 }
 
-// 専用ウィンドウに1タブ開いて抽出し、閉じる
+// 巡回タブで抽出を1回行う。失敗も { ok: false, ... } の形で返す(タブが閉じられた場合だけ例外)。
+async function extractInTab(adapter, tabId, target, range, settings) {
+  await waitForTabComplete(tabId, TAB_LOAD_TIMEOUT_MS);
+  let injection;
+  try {
+    [injection] = await browser.scripting.executeScript({
+      target: { tabId },
+      func: adapter.extract,
+      args: [{ sinceMs: range.sinceMs, untilMs: range.untilMs, maxScrolls: settings.maxScrolls, target }],
+      ...(adapter.world ? { world: adapter.world } : {}),
+    });
+  } catch (e) {
+    await browser.tabs.get(tabId); // タブ自体が閉じられていたら、ここで例外になって巡回先の失敗になる
+    return { ok: false, items: [], error: `抽出を実行できませんでした(${e.message || e})` };
+  }
+  // 抽出の途中でページが転送・再読み込みされると、結果が返らずに終わる
+  // (TikTok は初回アクセス時に、Cookie を設定して読み込み直すことがある)
+  if (!injection || !injection.result) {
+    return { ok: false, items: [], error: '抽出の途中でページが切り替わりました' };
+  }
+  return injection.result;
+}
+
+// 専用ウィンドウに1タブ開いて抽出し、閉じる。
+// 失敗したら一度だけページを読み込み直してやり直す。サイトによっては、開いた直後にページが切り替わったり
+// 投稿一覧の読み込みに失敗したりすることがある(例: TikTok を巡回の先頭に置くと失敗する)。
+// 未ログインやアクセス拒否のように、読み込み直しても直らない失敗(fatal)はやり直さない。
 async function fetchItems(adapter, target, range, windowId, settings) {
   const tab = await browser.tabs.create({
     windowId,
@@ -55,17 +81,16 @@ async function fetchItems(adapter, target, range, windowId, settings) {
     active: true,
   });
   try {
-    await waitForTabComplete(tab.id, TAB_LOAD_TIMEOUT_MS);
-    const [injection] = await browser.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: adapter.extract,
-      args: [
-        { sinceMs: range.sinceMs, untilMs: range.untilMs, maxScrolls: settings.maxScrolls, target },
-      ],
-      ...(adapter.world ? { world: adapter.world } : {}),
-    });
-    if (!injection || !injection.result) throw new Error('抽出結果を取得できませんでした');
-    return injection.result;
+    const first = await extractInTab(adapter, tab.id, target, range, settings);
+    if (first.ok || first.fatal) return first;
+
+    await browser.tabs.reload(tab.id);
+    await sleep(1000); // 読み込み直しが始まる前の「読み込み完了」を拾わないよう、少し待つ
+    const second = await extractInTab(adapter, tab.id, target, range, settings);
+    if (second.ok) return second;
+    // どちらも失敗なら、取れた投稿が多い方を返す(取れた分は一覧と履歴に残る)
+    const kept = second.items.length >= first.items.length ? second : first;
+    return { ...kept, error: `${kept.error}(読み込み直しても失敗)` };
   } finally {
     await browser.tabs.remove(tab.id).catch(() => {});
   }

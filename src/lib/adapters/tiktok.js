@@ -12,7 +12,7 @@ async function extract(opts) {
 
   const store = window.__snsPatrolTt;
   if (!store) {
-    return { ok: false, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
+    return { ok: false, fatal: true, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
   }
 
   // 最初の投稿一覧が届くのを待つ
@@ -25,17 +25,29 @@ async function extract(opts) {
     if (/Access Denied/i.test(document.title)) {
       return {
         ok: false,
+        fatal: true,
         items: [],
         error: 'TikTokにアクセスを拒否されました(Access Denied)。時間をおくか、別のブラウザで巡回してください',
       };
     }
     const visible = document.querySelectorAll(VIDEO_LINK).length;
+    // 原因の切り分け用に、失敗したときのページの様子を失敗理由に添える
+    const shownError = (document.body.innerText.split('\n').find((line) => /エラー|error|問題|再試行|更新/i.test(line)) || '')
+      .trim()
+      .slice(0, 40);
+    const diagnosis = [
+      `一覧の通信 ${store.responses}回(読めた ${store.pages}回)`,
+      store.lastBad != null && `最後の応答「${store.lastBad}」`,
+      `画面の動画 ${visible}件`,
+      shownError && `画面の表示「${shownError}」`,
+      `表示状態 ${document.visibilityState}${document.hasFocus() ? '・前面' : '・背面'}`,
+    ]
+      .filter(Boolean)
+      .join(' / ');
     return {
       ok: false,
       items: [],
-      error: visible
-        ? `投稿一覧の通信を読み取れませんでした(画面には動画が${visible}件見えています)`
-        : '投稿一覧が表示されませんでした(タイムアウト)。アカウント名の誤り、認証パズルの表示、アクセス制限の可能性があります',
+      error: `${visible ? '投稿一覧の通信を読み取れませんでした' : '投稿一覧が表示されませんでした(タイムアウト)'} [診断: ${diagnosis}]`,
     };
   }
 
