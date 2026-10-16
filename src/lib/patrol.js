@@ -70,30 +70,44 @@ async function extractInTab(adapter, tabId, target, range, settings) {
   return injection.result;
 }
 
-// 専用ウィンドウに1タブ開いて抽出し、閉じる。
-// 失敗したら一度だけページを読み込み直してやり直す。サイトによっては、開いた直後にページが切り替わったり
-// 投稿一覧の読み込みに失敗したりすることがある(例: TikTok を巡回の先頭に置くと失敗する)。
-// 未ログインやアクセス拒否のように、読み込み直しても直らない失敗(fatal)はやり直さない。
-async function fetchItems(adapter, target, range, windowId, settings) {
-  const tab = await browser.tabs.create({
-    windowId,
-    url: adapter.buildUrl(target, range),
-    active: true,
-  });
+// 巡回ウィンドウを前面に出す。最小化されていたら元に戻す(最大化などの状態は変えない)。
+async function bringWindowToFront(windowId) {
   try {
-    const first = await extractInTab(adapter, tab.id, target, range, settings);
-    if (first.ok || first.fatal) return first;
+    const win = await browser.windows.get(windowId);
+    await browser.windows.update(windowId, win.state === 'minimized' ? { state: 'normal', focused: true } : { focused: true });
+  } catch {
+    // 前面に出せなくても巡回は続ける(失敗した場合は抽出側の診断に出る)
+  }
+}
 
-    await browser.tabs.reload(tab.id);
-    await sleep(1000); // 読み込み直しが始まる前の「読み込み完了」を拾わないよう、少し待つ
-    const second = await extractInTab(adapter, tab.id, target, range, settings);
-    if (second.ok) return second;
-    // どちらも失敗なら、取れた投稿が多い方を返す(取れた分は一覧と履歴に残る)
-    const kept = second.items.length >= first.items.length ? second : first;
-    return { ...kept, error: `${kept.error}(読み込み直しても失敗)` };
+// 専用ウィンドウに1タブ開いて抽出し、閉じる
+async function openAndExtract(adapter, target, range, windowId, settings) {
+  // ページが画面に表示されていないと投稿一覧を返さないサイト(TikTok)は、開く前にウィンドウを前面に出す。
+  // ウィンドウが他のウィンドウに完全に覆われていると、Chrome はページを「表示されていない」扱いにする。
+  if (adapter.needsVisiblePage) await bringWindowToFront(windowId);
+  const tab = await browser.tabs.create({ windowId, url: adapter.buildUrl(target, range), active: true });
+  try {
+    return await extractInTab(adapter, tab.id, target, range, settings);
   } finally {
     await browser.tabs.remove(tab.id).catch(() => {});
   }
+}
+
+// 失敗したら一度だけ、新しいタブで開き直してやり直す。サイトによっては、開いた直後にページが切り替わったり、
+// 投稿一覧の読み込みに失敗したりすることがある(例: TikTok を巡回の先頭に置くと失敗する)。
+// 読み込み直しではなく新しいタブにするのは、新しいタブを開くと隠れていた巡回ウィンドウが前面に出るため。
+// (巡回開始の直後はウィンドウがすでに前面にあるので、その後ほかのウィンドウで覆われると隠れたままになる)
+// 未ログインやアクセス拒否のように、やり直しても直らない失敗(fatal)はやり直さない。
+async function fetchItems(adapter, target, range, windowId, settings) {
+  const first = await openAndExtract(adapter, target, range, windowId, settings);
+  if (first.ok || first.fatal) return first;
+
+  await sleep(1000);
+  const second = await openAndExtract(adapter, target, range, windowId, settings);
+  if (second.ok) return second;
+  // どちらも失敗なら、取れた投稿が多い方を返す(取れた分は一覧と履歴に残る)
+  const kept = second.items.length >= first.items.length ? second : first;
+  return { ...kept, error: `${kept.error}(開き直しても失敗)` };
 }
 
 function trimHistory(history, limit) {

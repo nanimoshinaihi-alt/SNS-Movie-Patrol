@@ -15,9 +15,16 @@ async function extract(opts) {
     return { ok: false, fatal: true, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
   }
 
-  // 最初の投稿一覧が届くのを待つ
+  // 最初の投稿一覧が届くのを待つ。
+  // 応答は来たのに中身が読めない状態が5秒続いたら、TikTok に断られたとみなして早めに切り上げる
+  // (TikTok 自身が取り直して成功することもあるので、すぐには諦めない)
   const deadline = Date.now() + 30000;
+  let badSince = null;
   while (store.pages === 0 && Date.now() < deadline && !/Access Denied/i.test(document.title)) {
+    if (store.responses > 0) {
+      badSince = badSince ?? Date.now();
+      if (Date.now() - badSince > 5000) break;
+    }
     await sleep(500);
   }
   if (store.pages === 0) {
@@ -44,10 +51,15 @@ async function extract(opts) {
     ]
       .filter(Boolean)
       .join(' / ');
+    // TikTok は画面に表示されていないページには投稿一覧を返さない
+    const advice =
+      document.visibilityState === 'hidden'
+        ? '巡回ウィンドウが他のウィンドウに隠れていた可能性があります。巡回中はウィンドウの一部が見える状態にしてください。'
+        : '';
     return {
       ok: false,
       items: [],
-      error: `${visible ? '投稿一覧の通信を読み取れませんでした' : '投稿一覧が表示されませんでした(タイムアウト)'} [診断: ${diagnosis}]`,
+      error: `${visible ? '投稿一覧の通信を読み取れませんでした' : '投稿一覧が表示されませんでした'}${advice ? '。' + advice : ''} [診断: ${diagnosis}]`,
     };
   }
 
@@ -120,6 +132,8 @@ export default {
   id: 'tiktok',
   label: 'TikTok',
   world: 'MAIN', // content/tiktok-hook.js が控えたデータ(ページ側の window)を読むため
+  // ページが画面に表示されていないと、投稿一覧の応答が空になる(TikTok側の判定)。巡回前にウィンドウを前面に出す
+  needsVisiblePage: true,
 
   fields: {
     account: { required: true, placeholder: 'アカウント名(@なし)' },

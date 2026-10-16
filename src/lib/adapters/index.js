@@ -17,9 +17,11 @@
 //                              text(本文)を付けた投稿は、拡張側(lib/match.js)がハッシュタグ・検索ワードで絞り込む。
 //                              サイト側の検索で絞り込み済みなら text を付けない。
 //                              失敗時、読み込み直しても直らないもの(未ログインなど)は fatal: true を付ける。
-//                              付けなければ、巡回側がページを一度読み込み直してやり直す。
+//                              付けなければ、巡回側が新しいタブで一度開き直してやり直す。
 //                              ページ側で単体実行されるので、関数の外の変数や import は使えない。
 //   world                    : (任意) 'MAIN' にすると extract をページ自身のJS環境で実行する
+//   needsVisiblePage         : (任意) true にすると、巡回タブを開く前に巡回ウィンドウを前面に出す
+//                              (画面に表示されていないページには中身を返さないサイト用)
 import x from './x.js';
 import instagram from './instagram.js';
 import tiktok from './tiktok.js';
