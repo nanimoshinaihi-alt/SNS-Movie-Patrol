@@ -33,14 +33,27 @@ function render() {
         const copy = el('button', { textContent: 'コピー' });
         copy.addEventListener('click', () => copyUrls(urls, row.name));
         head.append(copy);
-        box.append(
-          el('textarea', { readOnly: true, rows: Math.min(urls.length, 6), value: urls.join('\n') })
-        );
+        const list = el('textarea', { readOnly: true, rows: Math.min(urls.length, 6), value: urls.join('\n') });
+        list.dataset.baseRows = list.rows;
+        box.append(list);
       }
       return box;
     })
   );
+  fitUrlLists();
 }
+
+// 巡回先ごとの一覧は件数ぶんの高さしかないので、URLが長くて横スクロールバーが出ると、
+// バーが最後の行に重なって読めなくなる。バーが出るときだけ1行ぶん高くする。
+function fitUrlLists() {
+  for (const list of $('results').querySelectorAll('textarea')) {
+    list.rows = Number(list.dataset.baseRows);
+    if (list.scrollWidth > list.clientWidth) list.rows += 1;
+  }
+}
+
+// ウィンドウの幅が変わると横スクロールバーの有無も変わるので、高さを合わせ直す
+window.addEventListener('resize', fitUrlLists);
 
 $('copy').addEventListener('click', () => copyUrls(run.urls, 'すべて'));
 

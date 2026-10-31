@@ -173,7 +173,7 @@ async function patrolTarget(target, mode, nowMs, windowId, settings) {
 //   shouldStop()                   : true を返すと次の巡回先に進まず終了
 //   onStart(index, target)          : 巡回先の処理開始
 //   onResult(index, target, result) : 巡回先の処理終了
-//   onWait(seconds)                 : 次の巡回先までの待機開始
+//   onWait(seconds, index)          : index 番目が終わり、次の巡回先までの待機を始めた
 export async function runPatrol({ targets, mode, windowId, settings, shouldStop, onStart, onResult, onWait }) {
   const nowMs = Date.now();
   for (let i = 0; i < targets.length; i++) {
@@ -186,7 +186,7 @@ export async function runPatrol({ targets, mode, windowId, settings, shouldStop,
       const min = Math.min(settings.waitMinSec, settings.waitMaxSec);
       const max = Math.max(settings.waitMinSec, settings.waitMaxSec);
       const waitMs = (min + Math.random() * (max - min)) * 1000;
-      onWait(Math.round(waitMs / 1000));
+      onWait(Math.ceil(waitMs / 1000), i);
       const end = Date.now() + waitMs;
       while (Date.now() < end && !shouldStop()) await sleep(250);
     }

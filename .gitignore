@@ -1,2 +1,4 @@
 # build.ps1 の出力(配布用 zip は GitHub の Releases に置く)
 dist/
+# 手元用の自動テスト(tests/run-tests.ps1)。公開するかは未定
+tests/

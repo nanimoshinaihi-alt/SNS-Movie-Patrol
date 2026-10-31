@@ -199,6 +199,10 @@ async function openPage(url) {
 
 const openResults = () => openPage(RESULTS_URL);
 
+const targetName = (target) => `${getAdapter(target.site).label} ${describeTarget(target)}`;
+
+let waitTimer = null; // 次の巡回先までの残り秒数の表示を更新するタイマー
+
 async function start() {
   const checkedIds = new Set(
     [...$('targets').querySelectorAll('input:checked')].map((cb) => cb.dataset.targetId)
@@ -233,7 +237,8 @@ async function start() {
       settings,
       shouldStop: () => stopRequested,
       onStart(index, target) {
-        const name = `${getAdapter(target.site).label} ${describeTarget(target)}`;
+        clearInterval(waitTimer);
+        const name = targetName(target);
         run.rows.push({ name, status: 'running', urls: [], message: '' });
         $('progress').textContent = `${index + 1} / ${targets.length} : ${name}`;
         renderRun();
@@ -258,8 +263,20 @@ async function start() {
         // 巡回タブを閉じると隣のタブが前面に来てしまうので、待機中は操作画面に戻す
         browser.tabs.update(panelTab.id, { active: true }).catch(() => {});
       },
-      onWait(seconds) {
-        $('progress').textContent = `次の巡回先まで ${seconds} 秒待機中…`;
+      // 待機中も、いま何件目まで終わったかと次の巡回先が分かるように、残り秒数を数えながら出す
+      onWait(seconds, index) {
+        const next = `${index + 2} / ${targets.length} : ${targetName(targets[index + 1])}`;
+        let left = seconds;
+        const show = () => {
+          if (stopRequested) return; // 停止の案内を上書きしない
+          $('progress').textContent = `${index + 1} / ${targets.length} 完了 ・ 次は ${next}(あと ${left} 秒)`;
+        };
+        show();
+        clearInterval(waitTimer);
+        waitTimer = setInterval(() => {
+          left = Math.max(0, left - 1);
+          show();
+        }, 1000);
       },
     });
     const failed = run.rows.filter((r) => r.status !== 'ok').length;
@@ -270,6 +287,7 @@ async function start() {
   } catch (e) {
     $('progress').textContent = `エラーで中断しました: ${e.message || e}`;
   } finally {
+    clearInterval(waitTimer);
     await saveLastRun(run);
     setRunning(false);
     await renderTargets();

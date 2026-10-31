@@ -10,8 +10,9 @@ import browser from './browser.js';
 
 export const DEFAULT_SETTINGS = {
   window: { left: null, top: null, width: 560, height: 800 },
-  waitMinSec: 5,
-  waitMaxSec: 15,
+  // 巡回先の間の待ち時間(この範囲でランダム)。1件の巡回自体に10秒〜1分ほどかかるので、短めで十分
+  waitMinSec: 3,
+  waitMaxSec: 10,
   firstRunHours: 24, // 前回成功時刻がない巡回先を、何時間前まで遡るか
   maxScrolls: 300, // 1巡回先あたりのスクロール回数の上限
   historyLimit: 5000, // 巡回先ごとに保持する取得済み履歴の件数
