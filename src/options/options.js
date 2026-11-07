@@ -396,6 +396,8 @@ function renderFields() {
     $(id).required = !!(field && field.required);
     $(id).placeholder = field ? field.placeholder : '';
   }
+  $('fromProfileField').hidden = !fields.fromProfile;
+  $('fromProfileLabel').textContent = fields.fromProfile ? fields.fromProfile.label : '';
 }
 
 // 編集中の巡回先のid。null なら新規追加
@@ -408,6 +410,7 @@ function resetForm() {
   $('cancelEdit').hidden = true;
   $('site').disabled = false;
   for (const id of FIELD_IDS) $(id).value = '';
+  $('fromProfile').checked = false;
   $('group').value = groups.includes(selectedGroup) ? selectedGroup : UNGROUPED;
 }
 
@@ -423,6 +426,7 @@ function startEdit(target) {
   $('account').value = target.account;
   $('hashtags').value = target.hashtags.join(' ');
   $('keyword').value = target.keyword;
+  $('fromProfile').checked = !!target.fromProfile;
   $('group').value = groups.includes(target.group) ? target.group : UNGROUPED;
   $('addForm').scrollIntoView({ block: 'nearest' });
 }
@@ -439,10 +443,14 @@ $('addForm').addEventListener('submit', async (e) => {
     account: adapter.fields.account ? adapter.normalizeAccount($('account').value) : '',
     hashtags: adapter.fields.hashtags ? parseHashtags($('hashtags').value) : [],
     keyword: adapter.fields.keyword ? $('keyword').value.trim() : '',
+    fromProfile: !!adapter.fields.fromProfile && $('fromProfile').checked,
   };
   const group = $('group').value;
   if (!input.account && !input.hashtags.length && !input.keyword) {
     return notify('アカウント・ハッシュタグ・検索ワードのどれかを入力してください');
+  }
+  if (input.fromProfile && !input.account) {
+    return notify('「検索に出ないアカウント」はアカウントの入力が必要です');
   }
 
   const sameAs = (t) =>

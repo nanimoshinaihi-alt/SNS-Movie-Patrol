@@ -6,6 +6,9 @@
 // すべて検索して、ポストの全文(content/x-hook.js が控えたもの)を付けて返し、拡張側(lib/match.js)が絞り込む。
 // 長文ポストの「さらに表示」より後ろにあるハッシュタグは、Xの検索では見つからないため。
 // アカウント指定のない巡回先は全ポストを読むわけにいかないので、従来どおりXの検索に任せる。
+//
+// 「検索に出ないアカウント」(fromProfile)の巡回先は、検索の代わりにプロフィールのポスト欄を開き、
+// 動画付きのポストを拾う。検索除外(いわゆるシャドウバン)されたアカウントでも取得できる。
 
 // X がホストする動画だけに絞る。外部サイトの動画リンクも拾いたい場合は 'filter:videos' にする。
 const VIDEO_FILTER = 'filter:native_video';
@@ -35,6 +38,76 @@ async function extract(opts) {
   const TWEET = 'article[data-testid="tweet"]';
   const EMPTY = '[data-testid="emptyState"], [data-testid="empty_state_header_text"]';
   const isLoginPage = () => /^\/(i\/flow\/login|login)/.test(location.pathname);
+
+  // 検索に出ないアカウント用: プロフィールの「ポスト」欄を、Xの通信の応答(content/x-hook.js)から読む。
+  // (「動画」欄は検索と同じ仕組みらしく、検索除外されたアカウントでは最近の分しか出ないため使わない)
+  // ポスト欄はおおむね新しい順に並ぶ(自分への返信のスレッドは古い順にまとまる)ので、
+  // 1回分の読み込みがまるごと期間の開始より古くなったところで止める。
+  if (target.fromProfile) {
+    if (!store) {
+      return { ok: false, fatal: true, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
+    }
+    const timeOf = (id) => Number((BigInt(id) >> 22n) + TWITTER_EPOCH);
+    const profileItems = () =>
+      [...new Set(store.profileIds)]
+        .filter((id) => store.tweets[id] && store.tweets[id].video)
+        .map((id) => {
+          const item = { key: `x:${id}`, url: `https://x.com/${target.account}/status/${id}`, timeMs: timeOf(id) };
+          const tweet = store.tweets[id];
+          return filterLocally ? { ...item, text: tweet.text, tags: tweet.tags } : item;
+        });
+    const reachedOlder = () =>
+      store.lastProfilePage.length > 0 && store.lastProfilePage.every((id) => timeOf(id) < sinceMs);
+
+    // 最初の応答待ち。センシティブな内容の警告が出たら「プロフィールを表示」を押す
+    const firstDeadline = Date.now() + 30000;
+    while (store.profilePages === 0) {
+      if (isLoginPage()) return { ok: false, fatal: true, items: [], error: 'Xにログインしていません' };
+      if (Date.now() > firstDeadline) {
+        const empty = document.querySelector(EMPTY);
+        if (empty) return { ok: false, fatal: true, items: [], error: `プロフィールを表示できませんでした(${empty.textContent.trim().slice(0, 60)})` };
+        // 原因を調べるための手がかり: 開いているページ、画面の文言、押せるボタン
+        const column = document.querySelector('[data-testid="primaryColumn"]') || document.body;
+        const buttons = [...column.querySelectorAll('[role="button"], button')]
+          .map((b) => b.textContent.trim())
+          .filter((t) => t && t.length <= 30)
+          .slice(0, 8);
+        const text = column.innerText.replace(/\s+/g, ' ').trim().slice(0, 150);
+        return {
+          ok: false,
+          items: [],
+          error: `ポスト欄が表示されませんでした(タイムアウト)。診断: ${location.pathname} / ボタン「${buttons.join('」「')}」 / 画面「${text}」`,
+        };
+      }
+      const show = [...document.querySelectorAll('[role="button"], button')].find((b) =>
+        /^(はい、プロフィールを表示します|プロフィールを表示|Yes, view profile|View profile)$/.test(b.textContent.trim())
+      );
+      if (show) show.click();
+      await sleep(500);
+    }
+
+    let idle = 0;
+    let finished = false;
+    for (let i = 0; i < maxScrolls; i++) {
+      if (reachedOlder()) {
+        finished = true;
+        break;
+      }
+      const before = store.profilePages;
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      await sleep(1000 + Math.random() * 500);
+      // 応答が増えないまま6回(約6秒)経ったら、ポスト欄の終わりとみなす
+      if (store.profilePages === before) {
+        if (++idle >= 6) {
+          finished = true;
+          break;
+        }
+      } else {
+        idle = 0;
+      }
+    }
+    return { ok: true, items: profileItems(), truncated: !finished };
+  }
 
   const items = new Map();
   const domText = new Map();
@@ -148,6 +221,8 @@ export default {
     account: { required: false, placeholder: 'アカウント名(@なし)' },
     hashtags: { required: false, placeholder: '#なし・空白区切り' },
     keyword: { required: false, placeholder: '本文中の語' },
+    // 検索に出ないアカウント(検索除外)用に、プロフィールのポスト欄から取得する。アカウント指定が必要
+    fromProfile: { label: '検索に出ないアカウント(プロフィールのポスト欄から取得)' },
   },
 
   normalizeAccount(raw) {
@@ -159,6 +234,7 @@ export default {
   },
 
   buildUrl(target, { sinceMs, untilMs }) {
+    if (target.fromProfile) return `https://x.com/${target.account}`;
     const q = [
       buildQuery(target),
       VIDEO_FILTER,

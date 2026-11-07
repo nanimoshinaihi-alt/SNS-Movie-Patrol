@@ -10,6 +10,8 @@
 //   id, label                : 種別のIDと表示名
 //   fields                   : 使える指定項目。{ account: { required, placeholder }, hashtags: {...}, keyword: {...} }
 //                              書かなかった項目はそのサイトでは指定できない。
+//                              fromProfile: { label } があれば、「検索に出ないアカウント」のチェックを出す
+//                              (巡回先の fromProfile: true。アカウント指定が必要)。
 //   normalizeAccount(raw)    : アカウント入力の整形(@ やURLの除去など)
 //   buildUrl(target, range)  : 巡回で開くURL。range = { sinceMs, untilMs }
 //   extract(opts)            : 巡回タブ内に注入して実行する関数。opts = { sinceMs, untilMs, maxScrolls, target }
@@ -49,6 +51,7 @@ export function describeTarget(target) {
     target.account && `@${target.account}`,
     ...target.hashtags.map((t) => `#${t}`),
     target.keyword && `「${target.keyword}」`,
+    target.fromProfile && '(プロフィールから)',
   ]
     .filter(Boolean)
     .join(' ');
