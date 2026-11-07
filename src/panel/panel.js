@@ -10,7 +10,7 @@ import {
   getLastRun,
   saveLastRun,
 } from '../lib/storage.js';
-import { ALL_GROUPS, isInGroup, validSelection, renderGroupTabs, groupMark } from '../lib/groups.js';
+import { ALL_GROUPS, isInGroup, validSelection, nextGroupSelection, renderGroupTabs, groupMark } from '../lib/groups.js';
 import { getAdapter, describeTarget } from '../lib/adapters/index.js';
 import { runPatrol } from '../lib/patrol.js';
 import { openOrFocusTab } from '../lib/tabs.js';
@@ -53,11 +53,14 @@ function readMode() {
   };
 }
 
-// 表示中のグループ(タブ)。一覧に出ている巡回先だけが、ALL と巡回の対象になる。
+// 表示中のグループ(タブ)の配列。Ctrl・Shift+クリックで複数選べる。
+// 一覧に出ている巡回先だけが、ALL と巡回の対象になる。
 const GROUP_KEY = 'panelGroup';
-let selectedGroup = ALL_GROUPS;
+let selectedGroup = [ALL_GROUPS];
+let lastClickedGroup = null; // Shift+クリックの起点
 try {
-  selectedGroup = JSON.parse(localStorage.getItem(GROUP_KEY) ?? 'null');
+  const saved = JSON.parse(localStorage.getItem(GROUP_KEY) ?? 'null');
+  selectedGroup = Array.isArray(saved) ? saved : [saved]; // 以前は1つだけ保存していた
 } catch {}
 
 async function renderTargets() {
@@ -66,13 +69,16 @@ async function renderTargets() {
   selectedGroup = validSelection(groups, selectedGroup);
   // グループを作っていなければタブは出さない
   $('groupTabs').hidden = groups.length === 0;
-  renderGroupTabs($('groupTabs'), groups, colors, selectedGroup, (value) => {
-    selectedGroup = value;
+  renderGroupTabs($('groupTabs'), groups, colors, selectedGroup, (value, event) => {
+    const ctrl = event.ctrlKey || event.metaKey;
+    selectedGroup = nextGroupSelection(groups, selectedGroup, value, { ctrl, shift: event.shiftKey, last: lastClickedGroup });
+    if (!event.shiftKey || lastClickedGroup === ALL_GROUPS) lastClickedGroup = value;
     try {
-      localStorage.setItem(GROUP_KEY, JSON.stringify(value));
+      localStorage.setItem(GROUP_KEY, JSON.stringify(selectedGroup));
     } catch {}
     renderTargets();
   });
+  for (const tab of $('groupTabs').querySelectorAll('button')) tab.title = 'Ctrl・Shift+クリックで複数のタブを選べます';
 
   const allTargets = await getTargets();
   const targets = allTargets.filter((t) => isInGroup(t, selectedGroup));

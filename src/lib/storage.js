@@ -2,7 +2,7 @@ import browser from './browser.js';
 
 // storage.local のキー構成
 //   settings          : 全体設定
-//   targets           : 巡回先の配列 [{ id, site, account, hashtags: [], keyword, fromProfile?, group, enabled }]
+//   targets           : 巡回先の配列 [{ id, site, account, hashtags: [], keyword, fromProfile?, stories?, group, enabled }]
 //   groups            : グループ名の配列(巡回先の group はこの名前、未分類は '')
 //   groupColors       : グループ名 → 色の番号
 //   state:<targetId>  : 巡回先ごとの状態 { lastSuccessAt, history: { 投稿キー: 投稿時刻ms } }
@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
   firstRunHours: 24, // 前回成功時刻がない巡回先を、何時間前まで遡るか
   maxScrolls: 300, // 1巡回先あたりのスクロール回数の上限
   historyLimit: 5000, // 巡回先ごとに保持する取得済み履歴の件数
+  storyFileUrl: false, // Instagram のストーリーを、ページの URL ではなく動画ファイルの URL で一覧に出す
 };
 
 export async function getSettings() {

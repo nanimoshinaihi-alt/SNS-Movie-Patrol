@@ -39,7 +39,10 @@ async function renderTargets() {
     const state = await getState(target.id);
     const historyCount = Object.keys(state.history).length;
 
-    const reset = iconButton('↺', '履歴リセット(前回成功時刻と取得済み履歴を消す)');
+    // 前回成功時刻と履歴数は、名前を見やすくするため行には出さず、マウスを乗せたときに出す
+    const info = `前回: ${formatJst(state.lastSuccessAt)} / 履歴 ${historyCount}件`;
+    const reset = iconButton('↺', `履歴リセット(前回成功時刻と取得済み履歴を消す)
+${info}`);
     reset.addEventListener('click', async () => {
       if (!confirm(`${describeTarget(target)} の前回成功時刻と取得済み履歴を消しますか?`)) return;
       await removeState(target.id);
@@ -63,11 +66,8 @@ async function renderTargets() {
       { className: 'target', draggable: true },
       el('span', { className: 'grip', textContent: '⠿', title: 'ドラッグで並べ替え' }),
       el('span', { className: `site site-${target.site}`, textContent: adapter.label }),
-      el('span', { className: 'name', textContent: describeTarget(target) }),
-      el('span', {
-        className: 'muted',
-        textContent: `前回: ${formatJst(state.lastSuccessAt)} / 履歴 ${historyCount}件`,
-      }),
+      el('span', { className: 'name', textContent: describeTarget(target), title: `${describeTarget(target)}
+${info}` }),
       groupMark(groups, groupColors, target.group),
       edit,
       reset,
@@ -386,6 +386,9 @@ $('targets').addEventListener('dragend', async () => {
 });
 
 const FIELD_IDS = ['account', 'hashtags', 'keyword'];
+// サイトごとのチェックの項目(X: 検索に出ないアカウント / Instagram: ストーリー)。1つのサイトに1つまで
+const FLAG_KEYS = ['fromProfile', 'stories'];
+const flagOf = (adapter) => FLAG_KEYS.find((key) => adapter.fields[key]);
 
 // 選んだサイトで使える指定項目だけを出す
 function renderFields() {
@@ -396,8 +399,9 @@ function renderFields() {
     $(id).required = !!(field && field.required);
     $(id).placeholder = field ? field.placeholder : '';
   }
-  $('fromProfileField').hidden = !fields.fromProfile;
-  $('fromProfileLabel').textContent = fields.fromProfile ? fields.fromProfile.label : '';
+  const flag = flagOf(getAdapter($('site').value));
+  $('flagField').hidden = !flag;
+  $('flagLabel').textContent = flag ? fields[flag].label : '';
 }
 
 // 編集中の巡回先のid。null なら新規追加
@@ -410,7 +414,7 @@ function resetForm() {
   $('cancelEdit').hidden = true;
   $('site').disabled = false;
   for (const id of FIELD_IDS) $(id).value = '';
-  $('fromProfile').checked = false;
+  $('flag').checked = false;
   $('group').value = groups.includes(selectedGroup) ? selectedGroup : UNGROUPED;
 }
 
@@ -426,7 +430,7 @@ function startEdit(target) {
   $('account').value = target.account;
   $('hashtags').value = target.hashtags.join(' ');
   $('keyword').value = target.keyword;
-  $('fromProfile').checked = !!target.fromProfile;
+  $('flag').checked = FLAG_KEYS.some((key) => target[key]);
   $('group').value = groups.includes(target.group) ? target.group : UNGROUPED;
   $('addForm').scrollIntoView({ block: 'nearest' });
 }
@@ -443,14 +447,17 @@ $('addForm').addEventListener('submit', async (e) => {
     account: adapter.fields.account ? adapter.normalizeAccount($('account').value) : '',
     hashtags: adapter.fields.hashtags ? parseHashtags($('hashtags').value) : [],
     keyword: adapter.fields.keyword ? $('keyword').value.trim() : '',
-    fromProfile: !!adapter.fields.fromProfile && $('fromProfile').checked,
   };
+  for (const key of FLAG_KEYS) input[key] = flagOf(adapter) === key && $('flag').checked;
   const group = $('group').value;
   if (!input.account && !input.hashtags.length && !input.keyword) {
     return notify('アカウント・ハッシュタグ・検索ワードのどれかを入力してください');
   }
   if (input.fromProfile && !input.account) {
-    return notify('「検索に出ないアカウント」はアカウントの入力が必要です');
+    return notify('シャドウバン対象アカウントは、アカウントの入力が必要です');
+  }
+  if (input.stories && (input.hashtags.length || input.keyword)) {
+    return notify('ストーリーズには本文がないため、ハッシュタグ・検索ワードは指定できません');
   }
 
   const sameAs = (t) =>
@@ -458,7 +465,8 @@ $('addForm').addEventListener('submit', async (e) => {
     t.site === site &&
     t.account === input.account &&
     t.keyword === input.keyword &&
-    t.hashtags.join(' ') === input.hashtags.join(' ');
+    t.hashtags.join(' ') === input.hashtags.join(' ') &&
+    FLAG_KEYS.every((key) => !!t[key] === input[key]);
   const targets = await getTargets();
   if (targets.some(sameAs)) return notify('同じ巡回先がすでにあります');
 
@@ -484,6 +492,7 @@ async function renderSettings() {
   $('waitMaxSec').value = s.waitMaxSec;
   $('firstRunHours').value = s.firstRunHours;
   $('maxScrolls').value = s.maxScrolls;
+  $('storyFileUrl').checked = !!s.storyFileUrl;
   $('winLeft').value = s.window.left ?? '';
   $('winTop').value = s.window.top ?? '';
   $('winWidth').value = s.window.width;
@@ -498,6 +507,7 @@ $('saveSettings').addEventListener('click', async () => {
     waitMaxSec: Math.max(0, numberOr('waitMaxSec', s.waitMaxSec)),
     firstRunHours: Math.max(1, numberOr('firstRunHours', s.firstRunHours)),
     maxScrolls: Math.max(10, numberOr('maxScrolls', s.maxScrolls)),
+    storyFileUrl: $('storyFileUrl').checked,
     window: {
       left: numberOr('winLeft', null),
       top: numberOr('winTop', null),

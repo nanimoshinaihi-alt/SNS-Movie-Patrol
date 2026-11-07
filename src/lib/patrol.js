@@ -6,6 +6,8 @@ import { matchesTarget } from './match.js';
 
 // 検索への反映遅れで取りこぼさないよう、前回成功時刻より少し前から取り直す(重複は履歴で除外)
 const OVERLAP_MS = 10 * 60 * 1000;
+// ストーリーが表示される期間
+const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000;
 const TAB_LOAD_TIMEOUT_MS = 45000;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -146,8 +148,11 @@ async function patrolTarget(target, mode, nowMs, windowId, settings, shouldStop)
   const range = isRange
     ? { sinceMs: mode.sinceMs, untilMs: mode.untilMs }
     : {
-        sinceMs:
-          state.lastSuccessAt != null
+        // ストーリーは前回の巡回時刻に関係なく、いま見えている分(直近24時間)をすべて対象にする。
+        // (投稿の巡回先をストーリーに切り替えた場合などに、前回時刻より前のストーリーを取りこぼさないため)
+        sinceMs: target.stories
+          ? nowMs - STORY_LIFETIME_MS
+          : state.lastSuccessAt != null
             ? state.lastSuccessAt - OVERLAP_MS
             : nowMs - settings.firstRunHours * 60 * 60 * 1000,
         untilMs: nowMs,
@@ -176,7 +181,7 @@ async function patrolTarget(target, mode, nowMs, windowId, settings, shouldStop)
   if (complete && updateLastSuccess) state.lastSuccessAt = Math.min(range.untilMs, nowMs);
   await saveState(target.id, state);
 
-  const urls = fresh.map((item) => item.url);
+  const urls = fresh.map((item) => (settings.storyFileUrl && item.fileUrl) || item.url);
   if (extracted.ok && extracted.stopped) {
     return { status: 'partial', urls, message: '停止したため、途中までの結果です', range };
   }

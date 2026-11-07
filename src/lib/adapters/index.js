@@ -12,10 +12,14 @@
 //                              書かなかった項目はそのサイトでは指定できない。
 //                              fromProfile: { label } があれば、「検索に出ないアカウント」のチェックを出す
 //                              (巡回先の fromProfile: true。アカウント指定が必要)。
+//                              stories: { label } があれば、「ストーリーを取得」のチェックを出す
+//                              (巡回先の stories: true。アカウント指定が必要で、ハッシュタグ・検索ワードとは併用しない)。
+//                              チェックの項目は、1つのサイトに1つまで。
 //   normalizeAccount(raw)    : アカウント入力の整形(@ やURLの除去など)
 //   buildUrl(target, range)  : 巡回で開くURL。range = { sinceMs, untilMs }
 //   extract(opts)            : 巡回タブ内に注入して実行する関数。opts = { sinceMs, untilMs, maxScrolls, target }
-//                              { ok, items: [{ key, url, timeMs, text?, tags? }], truncated?, stopped?, error? } を返す。
+//                              { ok, items: [{ key, url, fileUrl?, timeMs, text?, tags? }], truncated?, stopped?, error? } を返す。
+//                              fileUrl は動画ファイルそのものの URL(設定で選ぶと url の代わりに一覧に出す)。
 //                              text(本文)を付けた投稿は、拡張側(lib/match.js)がハッシュタグ・検索ワードで絞り込む。
 //                              サイト側の検索で絞り込み済みなら text を付けない。
 //                              失敗時、読み込み直しても直らないもの(未ログインなど)は fatal: true を付ける。
@@ -54,6 +58,7 @@ export function describeTarget(target) {
     ...target.hashtags.map((t) => `#${t}`),
     target.keyword && `「${target.keyword}」`,
     target.fromProfile && '(プロフィールから)',
+    target.stories && '(ストーリー)',
   ]
     .filter(Boolean)
     .join(' ');

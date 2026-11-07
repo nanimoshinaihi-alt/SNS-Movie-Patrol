@@ -39,8 +39,8 @@
         <label id="hashtagsField">ハッシュタグ <input id="hashtags" type="text" size="24"></label>
         <label id="keywordField">検索ワード <input id="keyword" type="text" size="16"></label>
       </div>
-      <div class="field" id="fromProfileField">
-        <label><input id="fromProfile" type="checkbox"> <span id="fromProfileLabel"></span></label>
+      <div class="field" id="flagField">
+        <label><input id="flag" type="checkbox"> <span id="flagLabel"></span></label>
       </div>
       <div class="field">
         <label>グループ <select id="group"></select></label>
@@ -67,6 +67,10 @@
     <div class="field">
       スクロール上限 <input id="maxScrolls" type="number" min="10" step="10"> 回 / 巡回先
       <span class="muted">(Instagramは1回で12投稿)</span>
+    </div>
+    <div class="field">
+      <label><input id="storyFileUrl" type="checkbox"> Instagram のストーリーは、動画ファイルの URL で出す</label>
+      <span class="muted">(ログインなしで開けますが、2日ほどで期限が切れます)</span>
     </div>
   </section>
 

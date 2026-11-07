@@ -226,7 +226,7 @@ export default {
     hashtags: { required: false, placeholder: '#なし・空白区切り' },
     keyword: { required: false, placeholder: '本文中の語' },
     // 検索に出ないアカウント(検索除外)用に、プロフィールのポスト欄から取得する。アカウント指定が必要
-    fromProfile: { label: '検索に出ないアカウント(プロフィールのポスト欄から取得)' },
+    fromProfile: { label: 'シャドウバン対象アカウントの場合はチェック' },
   },
 
   normalizeAccount(raw) {
