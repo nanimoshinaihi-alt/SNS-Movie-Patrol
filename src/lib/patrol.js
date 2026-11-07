@@ -10,10 +10,12 @@ const TAB_LOAD_TIMEOUT_MS = 45000;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function waitForTabComplete(tabId, timeoutMs) {
+
+function waitForTabComplete(tabId, timeoutMs, shouldStop) {
   return new Promise((resolve, reject) => {
     const cleanup = () => {
       clearTimeout(timer);
+      clearInterval(stopTimer);
       browser.tabs.onUpdated.removeListener(onUpdated);
       browser.tabs.onRemoved.removeListener(onRemoved);
     };
@@ -36,6 +38,13 @@ function waitForTabComplete(tabId, timeoutMs) {
       cleanup();
       resolve();
     }, timeoutMs);
+    // 停止ボタンが押されたら、読み込みの完了を待たずに抽出側へ進む(抽出側がすぐに切り上げる)
+    const stopTimer = setInterval(() => {
+      if (shouldStop()) {
+        cleanup();
+        resolve();
+      }
+    }, 250);
     browser.tabs.onUpdated.addListener(onUpdated);
     browser.tabs.onRemoved.addListener(onRemoved);
     browser.tabs.get(tabId).then((tab) => {
@@ -48,19 +57,31 @@ function waitForTabComplete(tabId, timeoutMs) {
 }
 
 // 巡回タブで抽出を1回行う。失敗も { ok: false, ... } の形で返す(タブが閉じられた場合だけ例外)。
-async function extractInTab(adapter, tabId, target, range, settings) {
-  await waitForTabComplete(tabId, TAB_LOAD_TIMEOUT_MS);
+async function extractInTab(adapter, tabId, target, range, settings, shouldStop) {
+  await waitForTabComplete(tabId, TAB_LOAD_TIMEOUT_MS, shouldStop);
+  if (shouldStop()) return { ok: true, items: [], truncated: true, stopped: true }; // 開いた直後に停止が押された
+  const world = adapter.world ? { world: adapter.world } : {};
+  // 停止ボタンが押されたら、抽出中のページに印(window.__snsPatrolStop)を立てて、そこまでの分を返させる
+  const stopWatcher = setInterval(() => {
+    if (!shouldStop()) return;
+    clearInterval(stopWatcher);
+    browser.scripting
+      .executeScript({ target: { tabId }, func: () => { window.__snsPatrolStop = true; }, ...world })
+      .catch(() => {});
+  }, 250);
   let injection;
   try {
     [injection] = await browser.scripting.executeScript({
       target: { tabId },
       func: adapter.extract,
       args: [{ sinceMs: range.sinceMs, untilMs: range.untilMs, maxScrolls: settings.maxScrolls, target }],
-      ...(adapter.world ? { world: adapter.world } : {}),
+      ...world,
     });
   } catch (e) {
     await browser.tabs.get(tabId); // タブ自体が閉じられていたら、ここで例外になって巡回先の失敗になる
     return { ok: false, items: [], error: `抽出を実行できませんでした(${e.message || e})` };
+  } finally {
+    clearInterval(stopWatcher);
   }
   // 抽出の途中でページが転送・再読み込みされると、結果が返らずに終わる
   // (TikTok は初回アクセス時に、Cookie を設定して読み込み直すことがある)
@@ -81,13 +102,13 @@ async function bringWindowToFront(windowId) {
 }
 
 // 専用ウィンドウに1タブ開いて抽出し、閉じる
-async function openAndExtract(adapter, target, range, windowId, settings) {
+async function openAndExtract(adapter, target, range, windowId, settings, shouldStop) {
   // ページが画面に表示されていないと投稿一覧を返さないサイト(TikTok)は、開く前にウィンドウを前面に出す。
   // ウィンドウが他のウィンドウに完全に覆われていると、Chrome はページを「表示されていない」扱いにする。
   if (adapter.needsVisiblePage) await bringWindowToFront(windowId);
   const tab = await browser.tabs.create({ windowId, url: adapter.buildUrl(target, range), active: true });
   try {
-    return await extractInTab(adapter, tab.id, target, range, settings);
+    return await extractInTab(adapter, tab.id, target, range, settings, shouldStop);
   } finally {
     await browser.tabs.remove(tab.id).catch(() => {});
   }
@@ -98,12 +119,13 @@ async function openAndExtract(adapter, target, range, windowId, settings) {
 // 読み込み直しではなく新しいタブにするのは、新しいタブを開くと隠れていた巡回ウィンドウが前面に出るため。
 // (巡回開始の直後はウィンドウがすでに前面にあるので、その後ほかのウィンドウで覆われると隠れたままになる)
 // 未ログインやアクセス拒否のように、やり直しても直らない失敗(fatal)はやり直さない。
-async function fetchItems(adapter, target, range, windowId, settings) {
-  const first = await openAndExtract(adapter, target, range, windowId, settings);
-  if (first.ok || first.fatal) return first;
+async function fetchItems(adapter, target, range, windowId, settings, shouldStop) {
+  const first = await openAndExtract(adapter, target, range, windowId, settings, shouldStop);
+  // 停止ボタンが押されていたら、やり直さない
+  if (first.ok || first.fatal || shouldStop()) return first;
 
   await sleep(1000);
-  const second = await openAndExtract(adapter, target, range, windowId, settings);
+  const second = await openAndExtract(adapter, target, range, windowId, settings, shouldStop);
   if (second.ok) return second;
   // どちらも失敗なら、取れた投稿が多い方を返す(取れた分は一覧と履歴に残る)
   const kept = second.items.length >= first.items.length ? second : first;
@@ -118,7 +140,7 @@ function trimHistory(history, limit) {
 }
 
 // 巡回先1件。戻り値: { status: 'ok' | 'partial' | 'fail', urls, message, range }
-async function patrolTarget(target, mode, nowMs, windowId, settings) {
+async function patrolTarget(target, mode, nowMs, windowId, settings, shouldStop) {
   const state = await getState(target.id);
   const isRange = mode.type === 'range';
   const range = isRange
@@ -135,7 +157,7 @@ async function patrolTarget(target, mode, nowMs, windowId, settings) {
 
   let extracted;
   try {
-    extracted = await fetchItems(getAdapter(target.site), target, range, windowId, settings);
+    extracted = await fetchItems(getAdapter(target.site), target, range, windowId, settings, shouldStop);
   } catch (e) {
     return { status: 'fail', urls: [], message: e.message || String(e), range };
   }
@@ -155,6 +177,9 @@ async function patrolTarget(target, mode, nowMs, windowId, settings) {
   await saveState(target.id, state);
 
   const urls = fresh.map((item) => item.url);
+  if (extracted.ok && extracted.stopped) {
+    return { status: 'partial', urls, message: '停止したため、途中までの結果です', range };
+  }
   if (!extracted.ok) return { status: 'fail', urls, message: extracted.error, range };
   if (extracted.truncated) {
     return {
@@ -170,7 +195,7 @@ async function patrolTarget(target, mode, nowMs, windowId, settings) {
 // 巡回先を順に1つずつ処理する。
 //   mode                            : { type: 'since' } 前回成功時刻から現在まで
 //                                     { type: 'range', sinceMs, untilMs, updateLastSuccess, dedupe } 範囲指定
-//   shouldStop()                   : true を返すと次の巡回先に進まず終了
+//   shouldStop()                   : true を返すと、いまの巡回先をそこまでの分で切り上げ、次の巡回先に進まず終了
 //   onStart(index, target)          : 巡回先の処理開始
 //   onResult(index, target, result) : 巡回先の処理終了
 //   onWait(seconds, index)          : index 番目が終わり、次の巡回先までの待機を始めた
@@ -179,7 +204,7 @@ export async function runPatrol({ targets, mode, windowId, settings, shouldStop,
   for (let i = 0; i < targets.length; i++) {
     if (shouldStop()) break;
     onStart(i, targets[i]);
-    const result = await patrolTarget(targets[i], mode, nowMs, windowId, settings);
+    const result = await patrolTarget(targets[i], mode, nowMs, windowId, settings, shouldStop);
     onResult(i, targets[i], result);
 
     if (i < targets.length - 1 && !shouldStop()) {

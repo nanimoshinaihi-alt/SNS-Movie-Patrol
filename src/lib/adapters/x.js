@@ -30,10 +30,12 @@ async function extract(opts) {
   // buildQuery と同じ条件: アカウント指定があれば、ハッシュタグ・検索ワードは拡張側(lib/match.js)が全文に対して判定する
   const filterLocally = !!target.account && (target.hashtags.length > 0 || !!target.keyword);
   const store = window.__snsPatrolX;
-  if (filterLocally && !store) {
+  if ((filterLocally || target.fromProfile) && !store) {
     return { ok: false, fatal: true, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // 停止ボタンが押されると、拡張側(lib/patrol.js)がこの印を立てる。立ったら、そこまでに取れた分を返して終える
+  const stopped = () => window.__snsPatrolStop === true;
   const TWITTER_EPOCH = 1288834974657n;
   const TWEET = 'article[data-testid="tweet"]';
   const EMPTY = '[data-testid="emptyState"], [data-testid="empty_state_header_text"]';
@@ -44,9 +46,6 @@ async function extract(opts) {
   // ポスト欄はおおむね新しい順に並ぶ(自分への返信のスレッドは古い順にまとまる)ので、
   // 1回分の読み込みがまるごと期間の開始より古くなったところで止める。
   if (target.fromProfile) {
-    if (!store) {
-      return { ok: false, fatal: true, items: [], error: '読み取りの準備ができていません。拡張機能を更新してからやり直してください' };
-    }
     const timeOf = (id) => Number((BigInt(id) >> 22n) + TWITTER_EPOCH);
     const profileItems = () =>
       [...new Set(store.profileIds)]
@@ -62,6 +61,7 @@ async function extract(opts) {
     // 最初の応答待ち。センシティブな内容の警告が出たら「プロフィールを表示」を押す
     const firstDeadline = Date.now() + 30000;
     while (store.profilePages === 0) {
+      if (stopped()) return { ok: true, items: [], truncated: true, stopped: true };
       if (isLoginPage()) return { ok: false, fatal: true, items: [], error: 'Xにログインしていません' };
       if (Date.now() > firstDeadline) {
         const empty = document.querySelector(EMPTY);
@@ -93,11 +93,13 @@ async function extract(opts) {
         finished = true;
         break;
       }
-      const before = store.profilePages;
+      if (stopped()) break;
+      const before = new Set(store.profileIds).size;
       window.scrollTo(0, document.documentElement.scrollHeight);
       await sleep(1000 + Math.random() * 500);
-      // 応答が増えないまま6回(約6秒)経ったら、ポスト欄の終わりとみなす
-      if (store.profilePages === before) {
+      // 新しいポストが増えないまま6回(約6〜9秒)経ったら、ポスト欄の終わりとみなす
+      // (応答の数で数えると、終わりで中身のない応答が返り続けた場合に止まらない)
+      if (new Set(store.profileIds).size === before) {
         if (++idle >= 6) {
           finished = true;
           break;
@@ -106,7 +108,7 @@ async function extract(opts) {
         idle = 0;
       }
     }
-    return { ok: true, items: profileItems(), truncated: !finished };
+    return { ok: true, items: profileItems(), truncated: !finished, stopped: !finished && stopped() };
   }
 
   const items = new Map();
@@ -147,6 +149,7 @@ async function extract(opts) {
   const deadline = Date.now() + 30000;
   let ready = false;
   while (Date.now() < deadline) {
+    if (stopped()) return { ok: true, items: [], truncated: true, stopped: true };
     if (isLoginPage()) return { ok: false, fatal: true, items: [], error: 'Xにログインしていません' };
     if (document.querySelector(TWEET)) {
       ready = true;
@@ -169,6 +172,7 @@ async function extract(opts) {
       finished = true;
       break;
     }
+    if (stopped()) break;
     const before = items.size;
     window.scrollBy(0, Math.floor(window.innerHeight * 0.9));
     await sleep(800 + Math.random() * 400);
@@ -206,10 +210,10 @@ async function extract(opts) {
   }
 
   // 全文を1件も控えられていないなら、絞り込みの結果を信用できないので失敗にする
-  if (filterLocally && store.pages === 0) {
+  if (filterLocally && store.pages === 0 && !stopped()) {
     return { ok: false, items: [], error: 'ポストの本文を読み取れませんでした' };
   }
-  return { ok: true, items: result(), truncated: !finished };
+  return { ok: true, items: result(), truncated: !finished, stopped: !finished && stopped() };
 }
 
 export default {

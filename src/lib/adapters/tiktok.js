@@ -8,6 +8,8 @@
 async function extract(opts) {
   const { sinceMs, untilMs, maxScrolls, target } = opts;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // 停止ボタンが押されると、拡張側(lib/patrol.js)がこの印を立てる。立ったら、そこまでに取れた分を返して終える
+  const stopped = () => window.__snsPatrolStop === true;
   const VIDEO_LINK = 'a[href*="/video/"]';
 
   const store = window.__snsPatrolTt;
@@ -20,13 +22,14 @@ async function extract(opts) {
   // (TikTok 自身が取り直して成功することもあるので、すぐには諦めない)
   const deadline = Date.now() + 30000;
   let badSince = null;
-  while (store.pages === 0 && Date.now() < deadline && !/Access Denied/i.test(document.title)) {
+  while (store.pages === 0 && Date.now() < deadline && !stopped() && !/Access Denied/i.test(document.title)) {
     if (store.responses > 0) {
       badSince = badSince ?? Date.now();
       if (Date.now() - badSince > 5000) break;
     }
     await sleep(500);
   }
+  if (store.pages === 0 && stopped()) return { ok: true, items: [], truncated: true, stopped: true };
   if (store.pages === 0) {
     // TikTok の手前の防御システムにブラウザごと弾かれた場合の画面
     if (/Access Denied/i.test(document.title)) {
@@ -100,11 +103,12 @@ async function extract(opts) {
       finished = true;
       break;
     }
+    if (stopped()) break;
 
     const pagesBefore = store.pages;
     const waitUntil = Date.now() + 20000;
     let nextNudge = 0;
-    while (store.pages === pagesBefore && Date.now() < waitUntil) {
+    while (store.pages === pagesBefore && Date.now() < waitUntil && !stopped()) {
       if (Date.now() >= nextNudge) {
         // 読み込みが始まらないことがあるので、少し戻してから最下部へ送り直す
         window.scrollBy(0, -300);
@@ -115,6 +119,7 @@ async function extract(opts) {
       }
       await sleep(300);
     }
+    if (stopped()) break;
     if (store.pages === pagesBefore) {
       return {
         ok: false,
@@ -125,7 +130,7 @@ async function extract(opts) {
     await sleep(1000 + Math.random() * 1500);
   }
 
-  return { ok: true, items: [...items.values()], truncated: !finished };
+  return { ok: true, items: [...items.values()], truncated: !finished, stopped: !finished && stopped() };
 }
 
 export default {

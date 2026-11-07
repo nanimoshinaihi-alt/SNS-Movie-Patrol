@@ -2,7 +2,7 @@ import browser from './browser.js';
 
 // storage.local のキー構成
 //   settings          : 全体設定
-//   targets           : 巡回先の配列 [{ id, site, account, hashtags: [], keyword, group, enabled }]
+//   targets           : 巡回先の配列 [{ id, site, account, hashtags: [], keyword, fromProfile?, group, enabled }]
 //   groups            : グループ名の配列(巡回先の group はこの名前、未分類は '')
 //   groupColors       : グループ名 → 色の番号
 //   state:<targetId>  : 巡回先ごとの状態 { lastSuccessAt, history: { 投稿キー: 投稿時刻ms } }

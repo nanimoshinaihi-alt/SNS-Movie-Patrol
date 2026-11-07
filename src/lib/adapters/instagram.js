@@ -9,6 +9,8 @@
 async function extract(opts) {
   const { sinceMs, untilMs, maxScrolls } = opts;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // 停止ボタンが押されると、拡張側(lib/patrol.js)がこの印を立てる。立ったら、そこまでに取れた分を返して終える
+  const stopped = () => window.__snsPatrolStop === true;
   const TIMELINE_KEY = 'xdt_api__v1__feed__user_timeline_graphql_connection';
 
   if (location.pathname.startsWith('/accounts/login')) {
@@ -41,10 +43,11 @@ async function extract(opts) {
 
   // 最初の投稿一覧が届くのを待つ
   const deadline = Date.now() + 30000;
-  while (store.pages === 0 && Date.now() < deadline) {
+  while (store.pages === 0 && Date.now() < deadline && !stopped()) {
     await sleep(500);
     if (store.pages === 0 && document.readyState === 'complete') loadEmbedded();
   }
+  if (store.pages === 0 && stopped()) return { ok: true, items: [], truncated: true, stopped: true };
   if (store.pages === 0) {
     return {
       ok: false,
@@ -83,11 +86,12 @@ async function extract(opts) {
       finished = true;
       break;
     }
+    if (stopped()) break;
 
     const pagesBefore = store.pages;
     const waitUntil = Date.now() + 20000;
     let nextNudge = 0;
-    while (store.pages === pagesBefore && Date.now() < waitUntil) {
+    while (store.pages === pagesBefore && Date.now() < waitUntil && !stopped()) {
       if (Date.now() >= nextNudge) {
         // 読み込みが始まらないことがあるので、少し戻してから最下部へ送り直す
         window.scrollBy(0, -300);
@@ -96,6 +100,7 @@ async function extract(opts) {
       }
       await sleep(300);
     }
+    if (stopped()) break;
     if (store.pages === pagesBefore) {
       return {
         ok: false,
@@ -106,7 +111,7 @@ async function extract(opts) {
     await sleep(1000 + Math.random() * 1500);
   }
 
-  return { ok: true, items: [...items.values()], truncated: !finished };
+  return { ok: true, items: [...items.values()], truncated: !finished, stopped: !finished && stopped() };
 }
 
 export default {

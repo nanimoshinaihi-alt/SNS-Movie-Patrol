@@ -315,7 +315,7 @@ $('start').addEventListener('click', async () => {
 $('stop').addEventListener('click', () => {
   stopRequested = true;
   $('stop').disabled = true;
-  $('progress').textContent = '現在の巡回先が終わり次第、停止します…';
+  $('progress').textContent = '停止しています…(ここまでに取れた分は結果に残ります)';
 });
 
 $('openResults').addEventListener('click', openResults);

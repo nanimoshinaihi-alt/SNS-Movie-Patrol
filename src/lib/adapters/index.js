@@ -15,12 +15,14 @@
 //   normalizeAccount(raw)    : アカウント入力の整形(@ やURLの除去など)
 //   buildUrl(target, range)  : 巡回で開くURL。range = { sinceMs, untilMs }
 //   extract(opts)            : 巡回タブ内に注入して実行する関数。opts = { sinceMs, untilMs, maxScrolls, target }
-//                              { ok, items: [{ key, url, timeMs, text?, tags? }], truncated?, error? } を返す。
+//                              { ok, items: [{ key, url, timeMs, text?, tags? }], truncated?, stopped?, error? } を返す。
 //                              text(本文)を付けた投稿は、拡張側(lib/match.js)がハッシュタグ・検索ワードで絞り込む。
 //                              サイト側の検索で絞り込み済みなら text を付けない。
 //                              失敗時、読み込み直しても直らないもの(未ログインなど)は fatal: true を付ける。
 //                              付けなければ、巡回側が新しいタブで一度開き直してやり直す。
 //                              ページ側で単体実行されるので、関数の外の変数や import は使えない。
+//                              停止ボタンが押されると、巡回側がページに window.__snsPatrolStop = true を立てる。
+//                              見つけたら、そこまでの分を { ok: true, items, truncated: true, stopped: true } で返す。
 //   world                    : (任意) 'MAIN' にすると extract をページ自身のJS環境で実行する
 //   needsVisiblePage         : (任意) true にすると、巡回タブを開く前に巡回ウィンドウを前面に出す
 //                              (画面に表示されていないページには中身を返さないサイト用)
