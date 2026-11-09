@@ -457,7 +457,7 @@ $('addForm').addEventListener('submit', async (e) => {
     return notify('シャドウバン対象アカウントは、アカウントの入力が必要です');
   }
   if (input.stories && (input.hashtags.length || input.keyword)) {
-    return notify('ストーリーズには本文がないため、ハッシュタグ・検索ワードは指定できません');
+    return notify('ストーリーには本文がないため、ハッシュタグ・検索ワードは指定できません');
   }
 
   const sameAs = (t) =>
@@ -493,6 +493,7 @@ async function renderSettings() {
   $('firstRunHours').value = s.firstRunHours;
   $('maxScrolls').value = s.maxScrolls;
   $('storyFileUrl').checked = !!s.storyFileUrl;
+  $('storyFileTag').checked = !!s.storyFileTag;
   $('winLeft').value = s.window.left ?? '';
   $('winTop').value = s.window.top ?? '';
   $('winWidth').value = s.window.width;
@@ -508,6 +509,7 @@ $('saveSettings').addEventListener('click', async () => {
     firstRunHours: Math.max(1, numberOr('firstRunHours', s.firstRunHours)),
     maxScrolls: Math.max(10, numberOr('maxScrolls', s.maxScrolls)),
     storyFileUrl: $('storyFileUrl').checked,
+    storyFileTag: $('storyFileTag').checked,
     window: {
       left: numberOr('winLeft', null),
       top: numberOr('winTop', null),

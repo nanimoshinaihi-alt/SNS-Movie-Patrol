@@ -181,7 +181,10 @@ async function patrolTarget(target, mode, nowMs, windowId, settings, shouldStop)
   if (complete && updateLastSuccess) state.lastSuccessAt = Math.min(range.untilMs, nowMs);
   await saveState(target.id, state);
 
-  const urls = fresh.map((item) => (settings.storyFileUrl && item.fileUrl) || item.url);
+  // 動画ファイルの URL にはアカウント名が入らないので、設定で「URL @アカウント名」の形にできる
+  const fileUrlOf = (item) =>
+    settings.storyFileUrl && item.fileUrl ? `${item.fileUrl}${settings.storyFileTag ? ` @${target.account}` : ''}` : null;
+  const urls = fresh.map((item) => fileUrlOf(item) || item.url);
   if (extracted.ok && extracted.stopped) {
     return { status: 'partial', urls, message: '停止したため、途中までの結果です', range };
   }

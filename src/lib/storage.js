@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
   maxScrolls: 300, // 1巡回先あたりのスクロール回数の上限
   historyLimit: 5000, // 巡回先ごとに保持する取得済み履歴の件数
   storyFileUrl: false, // Instagram のストーリーを、ページの URL ではなく動画ファイルの URL で一覧に出す
+  storyFileTag: false, // 動画ファイルの URL の後ろに「 @アカウント名」を付ける(URL にアカウント名が入らないため)
 };
 
 export async function getSettings() {

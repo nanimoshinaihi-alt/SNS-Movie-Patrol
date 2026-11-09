@@ -179,7 +179,7 @@ export default {
     hashtags: { required: false, placeholder: '#なし・空白区切り' },
     keyword: { required: false, placeholder: '本文中の語' },
     // ストーリーから動画を拾う。ストーリーには本文がないので、ハッシュタグ・検索ワードとは併用できない
-    stories: { label: 'ストーリーズを巡回取得する' },
+    stories: { label: 'ストーリーを巡回取得する' },
   },
 
   normalizeAccount(raw) {

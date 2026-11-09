@@ -192,6 +192,15 @@ h2 .all {
   font-weight: normal;
 }
 
+/* エリアの中の小見出し */
+h3 {
+  margin: 12px 0 6px;
+  padding-left: 8px;
+  border-left: 3px solid var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 /* ---- 入力部品 ---- */
 
 button,
