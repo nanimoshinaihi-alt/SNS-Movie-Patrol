@@ -19,7 +19,9 @@ async function extract(opts) {
 
   // 最初の投稿一覧が届くのを待つ。
   // 応答は来たのに中身が読めない状態が5秒続いたら、TikTok に断られたとみなして早めに切り上げる
-  // (TikTok 自身が取り直して成功することもあるので、すぐには諦めない)
+  // (TikTok 自身が取り直して成功することもあるので、すぐには諦めない)。
+  // 巡回で最初に開く TikTok はこの状態(「不明なエラーが発生しました」)になることがある。
+  // 画面の「更新」ボタンでは直らず、新しいタブで開き直すと直るので、切り上げて巡回側の開き直しに任せる
   const deadline = Date.now() + 30000;
   let badSince = null;
   while (store.pages === 0 && Date.now() < deadline && !stopped() && !/Access Denied/i.test(document.title)) {
@@ -51,6 +53,8 @@ async function extract(opts) {
       `画面の動画 ${visible}件`,
       shownError && `画面の表示「${shownError}」`,
       `表示状態 ${document.visibilityState}${document.hasFocus() ? '・前面' : '・背面'}`,
+      // このページ(読み込み直し後なら、その後のページ)を開いてからの時間
+      `ページを開いてから ${Math.round(performance.now() / 1000)}秒`,
     ]
       .filter(Boolean)
       .join(' / ');

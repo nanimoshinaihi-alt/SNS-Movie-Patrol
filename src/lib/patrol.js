@@ -58,10 +58,20 @@ function waitForTabComplete(tabId, timeoutMs, shouldStop) {
   });
 }
 
-// 巡回タブで抽出を1回行う。失敗も { ok: false, ... } の形で返す(タブが閉じられた場合だけ例外)。
-async function extractInTab(adapter, tabId, target, range, settings, shouldStop) {
+// 巡回タブで抽出を行う。失敗も { ok: false, ... } の形で返す(タブが閉じられた場合だけ例外)。
+async function extractInTab(adapter, tabId, target, range, settings, shouldStop, onExtractStart = () => {}) {
+  // 抽出の途中でページが読み込み直されたら、同じタブで読み込みの完了を待ってもう一度抽出する。
+  // (TikTok は初回アクセス時に、準備用のページから本来のページへ読み込み直す)
+  for (let attempt = 1; ; attempt++) {
+    const result = await extractOnce(adapter, tabId, target, range, settings, shouldStop, onExtractStart);
+    if (!result.pageSwitched || attempt >= 3 || shouldStop()) return result;
+  }
+}
+
+async function extractOnce(adapter, tabId, target, range, settings, shouldStop, onExtractStart) {
   await waitForTabComplete(tabId, TAB_LOAD_TIMEOUT_MS, shouldStop);
   if (shouldStop()) return { ok: true, items: [], truncated: true, stopped: true }; // 開いた直後に停止が押された
+  onExtractStart();
   const world = adapter.world ? { world: adapter.world } : {};
   // 停止ボタンが押されたら、抽出中のページに印(window.__snsPatrolStop)を立てて、そこまでの分を返させる
   const stopWatcher = setInterval(() => {
@@ -88,7 +98,7 @@ async function extractInTab(adapter, tabId, target, range, settings, shouldStop)
   // 抽出の途中でページが転送・再読み込みされると、結果が返らずに終わる
   // (TikTok は初回アクセス時に、Cookie を設定して読み込み直すことがある)
   if (!injection || !injection.result) {
-    return { ok: false, items: [], error: '抽出の途中でページが切り替わりました' };
+    return { ok: false, items: [], pageSwitched: true, error: '抽出の途中でページが切り替わりました' };
   }
   return injection.result;
 }
@@ -108,10 +118,30 @@ async function openAndExtract(adapter, target, range, windowId, settings, should
   // ページが画面に表示されていないと投稿一覧を返さないサイト(TikTok)は、開く前にウィンドウを前面に出す。
   // ウィンドウが他のウィンドウに完全に覆われていると、Chrome はページを「表示されていない」扱いにする。
   if (adapter.needsVisiblePage) await bringWindowToFront(windowId);
+  // 失敗の原因を切り分けるため、タブを開いてからの経過(読み込み・ページの題名の移り変わり)を控える。
+  // 例: TikTok の「Please wait...」の画面から本来のページに切り替わるまでの様子
+  const openedAt = Date.now();
+  const timeline = [];
+  const note = (text) => {
+    if (timeline.length < 12) timeline.push(`${((Date.now() - openedAt) / 1000).toFixed(1)}秒 ${text}`);
+  };
+  let tabId = null;
+  const onUpdated = (id, info) => {
+    if (id !== tabId) return;
+    if (info.status === 'loading') note('読込開始');
+    if (info.status === 'complete') note('読込完了');
+    if (info.title) note(`「${info.title.slice(0, 24)}」`);
+  };
+  browser.tabs.onUpdated.addListener(onUpdated);
   const tab = await browser.tabs.create({ windowId, url: adapter.buildUrl(target, range), active: true });
+  tabId = tab.id;
   try {
-    return await extractInTab(adapter, tab.id, target, range, settings, shouldStop);
+    const result = await extractInTab(adapter, tab.id, target, range, settings, shouldStop, () => note('抽出開始'));
+    if (result.ok) return result;
+    note('失敗');
+    return { ...result, error: `${result.error} [経過: ${timeline.join(' > ')}]` };
   } finally {
+    browser.tabs.onUpdated.removeListener(onUpdated);
     await browser.tabs.remove(tab.id).catch(() => {});
   }
 }
@@ -128,10 +158,12 @@ async function fetchItems(adapter, target, range, windowId, settings, shouldStop
 
   await sleep(1000);
   const second = await openAndExtract(adapter, target, range, windowId, settings, shouldStop);
-  if (second.ok) return second;
+  // 開き直して成功したときも、原因の切り分けのため1回目の失敗理由(経過つき)を残す
+  if (second.ok) return { ...second, retriedAfter: first.error };
   // どちらも失敗なら、取れた投稿が多い方を返す(取れた分は一覧と履歴に残る)
   const kept = second.items.length >= first.items.length ? second : first;
-  return { ...kept, error: `${kept.error}(開き直しても失敗)` };
+  // 原因の切り分けのため、1回目の失敗理由(経過つき)も添える
+  return { ...kept, error: `${second.error}(開き直しても失敗) / 1回目: ${first.error}` };
 }
 
 function trimHistory(history, limit) {
@@ -197,7 +229,8 @@ async function patrolTarget(target, mode, nowMs, windowId, settings, shouldStop)
       range,
     };
   }
-  return { status: 'ok', urls, message: '', range };
+  const retried = extracted.retriedAfter ? `1回目は失敗し、開き直して取得しました(1回目: ${extracted.retriedAfter})` : '';
+  return { status: 'ok', urls, message: retried, range };
 }
 
 // 巡回先を順に1つずつ処理する。
