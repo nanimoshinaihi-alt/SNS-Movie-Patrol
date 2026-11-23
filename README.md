@@ -8,6 +8,8 @@ X・Instagram・TikTok の指定したアカウントやハッシュタグを巡
 
 ※ 画面写真のアカウント名・URL は、すべて説明用の架空のものです。
 
+English: see [For English speakers](#for-english-speakers) at the end of this page.
+
 ## できること
 
 - **3 サイトをまとめて巡回**: X、Instagram、TikTok の巡回先を登録しておき、ボタン 1 つで順番に巡回します。
@@ -148,3 +150,28 @@ Chrome 用のほかに、開発中の Firefox 用(manifest を書き換えたも
 [MIT License](LICENSE)
 
 `src/vendor/browser-polyfill.min.js` は Mozilla の [webextension-polyfill](https://github.com/mozilla/webextension-polyfill) で、Mozilla Public License 2.0 のもとで配布されています。
+
+## For English speakers
+
+SNS Movie Patrol is a Chrome extension that patrols X, Instagram and TikTok accounts or hashtags you register, and lists the URLs of posts that contain videos (one URL per line, ready to paste into a downloader). It does not download videos itself.
+
+The interface is in Japanese only. You can use Chrome's built-in translation: right-click anywhere on the extension's page and choose **Translate to English**. Account names, hashtags, keywords and group names you entered are left untranslated.
+
+Machine translation gets some labels wrong. Here is what the main ones mean:
+
+| Japanese | Meaning |
+|---|---|
+| 巡回開始 / 一時停止 / 再開 / 停止 | Start patrol / Pause / Resume / Stop |
+| 巡回先 | Targets (the accounts and hashtags to patrol) |
+| 前回完了以降 | Since last run: new posts since the last successful patrol of each target |
+| 日時範囲指定 | Date range: posts within the period you specify (Japan time) |
+| 取得済み履歴にあるURLを除外する | Skip URLs already found in earlier runs |
+| 成功したら前回成功時刻を終了日時に更新する | After success, set each target's "last run" time to the end of the date range |
+| シャドウバン対象アカウントの場合はチェック | (X) Check this if the account does not appear in X search; its profile is read instead |
+| ストーリーを巡回取得する | (Instagram) Patrol this account's Stories instead of its posts |
+| アクセス間隔 | Wait between targets (random, in seconds) |
+| 初回の遡り | How many hours to look back on a target's first run |
+| スクロール上限 | Maximum number of scrolls per target |
+| 一時停止 | Pause after the current target finishes. Use it when you want to type in another Chrome window, since each new target switches tabs in the patrol window |
+
+To install (see "導入方法 (Chrome)" above): download `sns-movie-patrol-chrome-v*.zip` from Releases, unzip it, turn on Developer mode at `chrome://extensions`, and choose "Load unpacked" with the unzipped `sns-movie-patrol` folder. Sign in to X, Instagram and TikTok in the same browser before patrolling.
