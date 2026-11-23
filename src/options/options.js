@@ -66,7 +66,7 @@ ${info}`);
       { className: 'target', draggable: true },
       el('span', { className: 'grip', textContent: '⠿', title: 'ドラッグで並べ替え' }),
       el('span', { className: `site site-${target.site}`, textContent: adapter.label }),
-      el('span', { className: 'name', textContent: describeTarget(target), title: `${describeTarget(target)}
+      el('span', { className: 'name', translate: false, textContent: describeTarget(target), title: `${describeTarget(target)}
 ${info}` }),
       groupMark(groups, groupColors, target.group),
       edit,
@@ -207,7 +207,7 @@ async function renderGroups() {
   const current = editingId ? $('group').value : selectedGroup || UNGROUPED;
   $('group').replaceChildren(
     el('option', { value: UNGROUPED, textContent: '(なし)' }),
-    ...groups.map((name) => el('option', { value: name, textContent: name }))
+    ...groups.map((name) => el('option', { value: name, textContent: name, translate: false }))
   );
   $('group').value = groups.includes(current) ? current : UNGROUPED;
 }

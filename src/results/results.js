@@ -23,7 +23,7 @@ function render() {
       const head = el(
         'div',
         { className: 'result-head' },
-        el('span', { className: 'name', textContent: row.name, title: row.name }),
+        el('span', { className: 'name', textContent: row.name, title: row.name, translate: false }),
         el('span', { className: `status-${row.status}`, textContent: STATUS_LABEL[row.status] }),
         el('span', { className: 'muted', textContent: `${urls.length}件` })
       );

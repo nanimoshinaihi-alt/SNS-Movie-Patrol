@@ -22,6 +22,8 @@ const OPTIONS_URL = browser.runtime.getURL('options/options.html');
 
 let running = false;
 let stopRequested = false;
+let pauseRequested = false; // 一時停止中(次の巡回先に進まない)
+let currentProgress = ''; // 巡回中の巡回先の表示(一時停止を取り消したときに戻す)
 // 直近の実行結果。urls は全体(巡回先をまたぐ重複なし)、rows = [{ name, status, urls, message }] は巡回先ごと。
 // storage の lastRun に保存し、URL一覧は結果タブ(results)が表示する。
 let run = { at: null, urls: [], rows: [] };
@@ -109,7 +111,7 @@ async function renderTargets() {
         { className: 'target' },
         checkbox,
         el('span', { className: `site site-${target.site}`, textContent: adapter.label }),
-        el('span', { className: 'name', textContent: describeTarget(target) }),
+        el('span', { className: 'name', textContent: describeTarget(target), translate: false }),
         el('span', { className: 'muted', textContent: `前回: ${formatJst(state.lastSuccessAt)}` }),
         groupMark(groups, colors, target.group)
       )
@@ -174,7 +176,7 @@ function renderRun() {
       const line = el(
         'div',
         { className: 'target' },
-        el('span', { className: 'name', textContent: row.name, title: row.name }),
+        el('span', { className: 'name', textContent: row.name, title: row.name, translate: false }),
         el('span', { className: `status-${row.status}`, textContent: STATUS_LABEL[row.status] }),
         el('span', { className: 'muted', textContent: row.status === 'running' ? '' : `${row.urls.length}件` })
       );
@@ -188,8 +190,11 @@ function renderRun() {
 
 function setRunning(value) {
   running = value;
-  $('start').disabled = value;
+  // 巡回中は「巡回開始」のボタンが「一時停止」「再開」のボタンになる
+  $('start').disabled = false;
+  $('start').textContent = value ? '一時停止' : '巡回開始';
   $('stop').disabled = !value;
+  if (!value) pauseRequested = false;
   for (const cb of $('targets').querySelectorAll('input')) cb.disabled = value;
   $('checkAll').disabled = value;
   for (const tab of $('groupTabs').querySelectorAll('button')) tab.disabled = value;
@@ -232,6 +237,7 @@ async function start() {
   const seen = new Set();
   run = { at: Date.now(), urls: [], rows: [] };
   stopRequested = false;
+  pauseRequested = false;
   setRunning(true);
   renderRun();
 
@@ -242,11 +248,13 @@ async function start() {
       windowId: win.id,
       settings,
       shouldStop: () => stopRequested,
+      shouldPause: () => pauseRequested,
       onStart(index, target) {
         clearInterval(waitTimer);
         const name = targetName(target);
         run.rows.push({ name, status: 'running', urls: [], message: '' });
-        $('progress').textContent = `${index + 1} / ${targets.length} : ${name}`;
+        currentProgress = `${index + 1} / ${targets.length} : ${name}`;
+        $('progress').textContent = currentProgress;
         renderRun();
       },
       onResult(index, target, result) {
@@ -275,7 +283,9 @@ async function start() {
         let left = seconds;
         const show = () => {
           if (stopRequested) return; // 停止の案内を上書きしない
-          $('progress').textContent = `${index + 1} / ${targets.length} 完了 ・ 次は ${next}(あと ${left} 秒)`;
+          $('progress').textContent = pauseRequested
+            ? `${index + 1} / ${targets.length} 完了 ・ 一時停止中(「再開」で ${next} から続けます)`
+            : `${index + 1} / ${targets.length} 完了 ・ 次は ${next}(あと ${left} 秒)`;
         };
         show();
         clearInterval(waitTimer);
@@ -302,6 +312,7 @@ async function start() {
 }
 
 $('start').addEventListener('click', async () => {
+  if (running) return togglePause();
   // Firefox系はサイトへのアクセス権限が最初は付いていないので、ここで許可を求める(許可済みなら何も出ない)。
   // Firefox はクリック直後でないと許可ダイアログを出せないため、他の処理より先に呼ぶ。
   const origins = browser.runtime.getManifest().host_permissions;
@@ -318,9 +329,22 @@ $('start').addEventListener('click', async () => {
   start();
 });
 
+// 一時停止: いまの巡回先が終わったら、「再開」を押すまで次に進まない
+function togglePause() {
+  pauseRequested = !pauseRequested;
+  $('start').textContent = pauseRequested ? '再開' : '一時停止';
+  const progress = $('progress');
+  if (pauseRequested && progress.textContent === currentProgress) {
+    progress.textContent = '一時停止します…(いまの巡回先が終わったら止まります)';
+  } else if (!pauseRequested && progress.textContent.startsWith('一時停止します')) {
+    progress.textContent = currentProgress;
+  }
+}
+
 $('stop').addEventListener('click', () => {
   stopRequested = true;
   $('stop').disabled = true;
+  $('start').disabled = true; // 止まるまでは一時停止もできない
   $('progress').textContent = '停止しています…(ここまでに取れた分は結果に残ります)';
 });
 

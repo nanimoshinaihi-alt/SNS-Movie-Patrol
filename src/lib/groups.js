@@ -123,6 +123,8 @@ export function renderGroupTabs(container, groups, colors, selected, onSelect) {
       // 色を持たないタブは、列の下線用に継承した色を打ち消してカードの色に戻す
       tab.style.setProperty('--tab-color', groupColor(groups, colors, option.value) || 'var(--accent)');
       tab.textContent = option.label;
+      // 利用者が付けたグループ名は、ブラウザの翻訳機能で訳させない(「すべて」「未分類」は訳してよい)
+      if (option.value) tab.translate = false;
       tab.addEventListener('click', (event) => onSelect(option.value, event));
       return tab;
     })

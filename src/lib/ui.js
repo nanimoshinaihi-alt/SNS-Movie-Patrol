@@ -3,6 +3,8 @@
 export const $ = (id) => document.getElementById(id);
 
 // 要素を作る。props はそのままプロパティに入れ、children は中身として追加する(null や '' は無視)。
+// 利用者が入力したもの(アカウント名・ハッシュタグ・検索ワード・グループ名)を表示する要素には translate: false を付け、
+// ブラウザの翻訳機能で訳されないようにする。
 export function el(tag, props = {}, ...children) {
   const node = Object.assign(document.createElement(tag), props);
   node.append(...children.filter((child) => child != null && child !== ''));

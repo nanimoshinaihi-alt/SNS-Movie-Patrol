@@ -240,9 +240,12 @@ async function patrolTarget(target, mode, nowMs, windowId, settings, shouldStop)
 //   onStart(index, target)          : 巡回先の処理開始
 //   onResult(index, target, result) : 巡回先の処理終了
 //   onWait(seconds, index)          : index 番目が終わり、次の巡回先までの待機を始めた
-export async function runPatrol({ targets, mode, windowId, settings, shouldStop, onStart, onResult, onWait }) {
+//   shouldPause()                   : true の間は、次の巡回先に進まずに待つ(いまの巡回先は最後まで行う)。
+//                                     待っている間は新しいタブを開かないので、別のウィンドウでの入力を邪魔しない
+export async function runPatrol({ targets, mode, windowId, settings, shouldStop, onStart, onResult, onWait, shouldPause = () => false }) {
   const nowMs = Date.now();
   for (let i = 0; i < targets.length; i++) {
+    while (shouldPause() && !shouldStop()) await sleep(250);
     if (shouldStop()) break;
     onStart(i, targets[i]);
     const result = await patrolTarget(targets[i], mode, nowMs, windowId, settings, shouldStop);
